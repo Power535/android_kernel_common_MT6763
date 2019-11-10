@@ -161,6 +161,7 @@ imgsensor_sensor_open(struct IMGSENSOR_SENSOR *psensor)
 #ifdef CONFIG_MTK_CCU
 	struct ccu_sensor_info ccuSensorInfo;
 	enum IMGSENSOR_SENSOR_IDX sensor_idx = psensor->inst.sensor_idx;
+	struct i2c_client *pi2c_client = NULL;
 #endif
 
 	IMGSENSOR_FUNCTION_ENTRY();
@@ -201,6 +202,15 @@ imgsensor_sensor_open(struct IMGSENSOR_SENSOR *psensor)
 #ifdef CONFIG_MTK_CCU
 			ccuSensorInfo.slave_addr = (psensor_inst->i2c_cfg.pinst->msg->addr << 1);
 			ccuSensorInfo.sensor_name_string = (char *)(psensor_inst->psensor_name);
+
+			pi2c_client = psensor_inst->i2c_cfg.pinst->pi2c_client;
+			if (pi2c_client)
+				ccuSensorInfo.i2c_id =
+					(((struct mt_i2c *) i2c_get_adapdata(
+						pi2c_client->adapter))->id);
+			else
+				ccuSensorInfo.i2c_id = -1;
+
 			ccu_set_sensor_info(sensor_idx, &ccuSensorInfo);
 #endif
 		}
@@ -438,7 +448,7 @@ int imgsensor_set_driver(struct IMGSENSOR_SENSOR *psensor)
 #define TOSTRING(value)           #value
 #define STRINGIZE(stringizedName) TOSTRING(stringizedName)
 
-	char *psensor_list_with_end = NULL;
+	char *psensor_list_with_end = NULL, *psensor_list = NULL;
 	char *sensor_kconfig = STRINGIZE(CONFIG_CUSTOM_KERNEL_IMGSENSOR);
 
 	static int orderedSearchList[MAX_NUM_OF_SUPPORT_SENSOR] = {-1};
@@ -456,7 +466,7 @@ int imgsensor_set_driver(struct IMGSENSOR_SENSOR *psensor)
 
 
 	if (get_search_list) {
-		psensor_list_with_end = kmalloc(strlen(sensor_kconfig)-1, GFP_KERNEL);
+		psensor_list = psensor_list_with_end = kmalloc(strlen(sensor_kconfig)-1, GFP_KERNEL);
 	}
 	if (psensor_list_with_end != NULL) {
 		for (j = 0; j < MAX_NUM_OF_SUPPORT_SENSOR; j++)
@@ -484,7 +494,7 @@ int imgsensor_set_driver(struct IMGSENSOR_SENSOR *psensor)
 			driver_name = strsep(&psensor_list_with_end, " \0");
 		}
 		get_search_list = false;
-		kfree(psensor_list_with_end);
+		kfree(psensor_list);
 	}
 
 

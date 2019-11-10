@@ -555,13 +555,12 @@ mpu_cfg_t *get_mpu_region_cfg_info(int region_id);
 int ccci_get_opt_val(char *opt_name);
 
 /* RAT configure relate */
-int ccci_get_rat_str_from_drv(int md_id, char rat_str[], int size);
-void ccci_set_rat_str_to_drv(int md_id, char rat_str[]);
 unsigned int get_wm_bitmap_for_ubin(void); /* Universal bin */
 void update_rat_bit_map_to_drv(int md_id, unsigned int val);
 int get_md_img_type(int md_id);
 int get_legacy_md_type(int md_id);
 int check_md_type(int data);
 unsigned int get_mtee_is_enabled(void);
+void __iomem *ccci_map_phy_addr(phys_addr_t phy_addr, unsigned int size);
 
 #endif

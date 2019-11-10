@@ -210,7 +210,7 @@ static int ion_lma_heap_map_user(struct ion_heap *mapper,
 		container_of(mapper, struct ion_lma_heap, heap);
 
 	if (!lma_heap->allow_cpu_map) {
-		pr_err("Trying to map_user fake secure ION handle\n");
+		pr_info("Trying to map_user fake secure ION handle\n");
 		return -EPERM;
 	}
 
@@ -240,7 +240,7 @@ static void *ion_lma_heap_map_kernel(struct ion_heap *heap,
 	paddr += lma_heap->offset;
 
 	if (!lma_heap->allow_cpu_map) {
-		pr_err("Trying to map_kernel fake secure ION handle\n");
+		pr_info("Trying to map_kernel fake secure ION handle\n");
 		return ERR_PTR(-EPERM);
 	}
 

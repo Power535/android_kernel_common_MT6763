@@ -387,7 +387,7 @@ static int pdp_crtc_helper_mode_set_base_atomic(struct drm_crtc *crtc,
 
 		/* Set the frame buffer base address */
 		if (address & 0xF) {
-			dev_warn(crtc->dev->dev,
+			dev_info(crtc->dev->dev,
 					"Warning - the frame buffer address is not aligned\n");
 		}
 		plato_write_reg32(pdp_crtc->pdp_reg,

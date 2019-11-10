@@ -28,19 +28,29 @@
 #include <linux/of_irq.h>
 #include <dt-bindings/interrupt-controller/arm-gic.h>
 #endif
+#ifdef CONFIG_MTK_ENABLE_GENIEZONE
+#include <linux/smp.h>
+#endif
 
 struct trusty_irq {
 	struct trusty_irq_state *is;
 	struct hlist_node node;
+	unsigned int phy_irq_num;
 	unsigned int irq;
 	bool percpu;
 	bool enable;
+#if defined(CONFIG_MTK_NEBULA_VM_SUPPORT) && defined(CONFIG_GZ_SMC_CALL_REMAP)
+	bool vmm_specific;
+#endif
 	struct trusty_irq __percpu *percpu_ptr;
 };
 
 struct trusty_irq_work {
 	struct trusty_irq_state *is;
 	struct work_struct work;
+#if defined(CONFIG_MTK_NEBULA_VM_SUPPORT) && defined(CONFIG_GZ_SMC_CALL_REMAP)
+	struct work_struct vmm_work;
+#endif
 };
 
 struct trusty_irq_irqset {
@@ -66,6 +76,25 @@ static struct trusty_irq __percpu *trusty_ipi_data[16];
 static int trusty_ipi_init[16];
 #endif
 
+#ifdef CONFIG_MTK_ENABLE_GENIEZONE
+enum ipi_msg_type {
+#ifdef CONFIG_TRUSTY
+	IPI_CUSTOM_FIRST,
+	IPI_CUSTOM_LAST = 15,
+#endif
+};
+static void smp_cross_call(const struct cpumask *target, unsigned int ipinr)
+{
+#ifdef CONFIG_GZ_RESEND_IPI
+#if 0
+	trace_ipi_raise(target, ipi_types[ipinr]);
+#endif
+	if (__smp_cross_call)
+		__smp_cross_call(target, ipinr);
+#endif
+}
+#endif
+
 static void trusty_irq_enable_pending_irqs(struct trusty_irq_state *is,
 					   struct trusty_irq_irqset *irqset,
 					   bool percpu)
@@ -84,7 +113,10 @@ static void trusty_irq_enable_pending_irqs(struct trusty_irq_state *is,
 			enable_irq(trusty_irq->irq);
 #else
 #ifdef CONFIG_MTK_ENABLE_GENIEZONE
-		if (percpu)
+		if (percpu && (trusty_irq->phy_irq_num >= IPI_CUSTOM_FIRST &&
+				trusty_irq->phy_irq_num <= IPI_CUSTOM_LAST))
+			smp_cross_call(cpumask_of(smp_processor_id()), trusty_irq->irq);
+		else if (percpu)
 			enable_percpu_irq(trusty_irq->irq, 0);
 		else
 			enable_irq(trusty_irq->irq);
@@ -174,6 +206,47 @@ static int trusty_irq_call_notify(struct notifier_block *nb,
 	return NOTIFY_OK;
 }
 
+#if defined(CONFIG_MTK_NEBULA_VM_SUPPORT) && defined(CONFIG_GZ_SMC_CALL_REMAP)
+static void trusty_vmm_irq_work_func_locked_nop(struct work_struct *work)
+{
+	int ret;
+	struct trusty_irq_state *is =
+		container_of(work, struct trusty_irq_work, vmm_work)->is;
+
+	dev_dbg(is->dev, "%s\n", __func__);
+
+	ret = trusty_std_call32(is->trusty_dev, SMC_SC_VM_NOP_LOCKED, 0, 0, 0);
+	if (ret != 0)
+		dev_err(is->dev, "%s: SMC_SC_VM_NOP_LOCKED failed %d",
+			__func__, ret);
+
+	dev_dbg(is->dev, "%s: done\n", __func__);
+}
+
+static void trusty_vmm_irq_work_func(struct work_struct *work)
+{
+	int ret;
+	u32 smc_nop_nr = SMC_SC_VM_NOP;
+	struct trusty_irq_state *is =
+		container_of(work, struct trusty_irq_work, vmm_work)->is;
+
+	dev_dbg(is->dev, "%s\n", __func__);
+
+	do {
+		ret = trusty_std_call32(is->trusty_dev, smc_nop_nr, 0, 0, 0);
+		if (ret == SM_ERR_VM_NOP_INTERRUPTED)
+			smc_nop_nr = SMC_SC_VM_NOP;
+		else if (ret == SM_ERR_NOP_INTERRUPTED)
+			smc_nop_nr = SMC_SC_NOP;
+	} while ((ret == SM_ERR_VM_NOP_INTERRUPTED) ||
+		 (ret == SM_ERR_NOP_INTERRUPTED));
+
+	if (ret != SM_ERR_VM_NOP_DONE)
+		dev_err(is->dev, "%s: SM_ERR_VM_NOP_DONE failed %d", __func__, ret);
+
+	dev_dbg(is->dev, "%s: done\n", __func__);
+}
+#endif
 
 static void trusty_irq_work_func_locked_nop(struct work_struct *work)
 {
@@ -194,14 +267,28 @@ static void trusty_irq_work_func_locked_nop(struct work_struct *work)
 static void trusty_irq_work_func(struct work_struct *work)
 {
 	int ret;
+#if defined(CONFIG_MTK_NEBULA_VM_SUPPORT) && defined(CONFIG_GZ_SMC_CALL_REMAP)
+	u32 smc_nop_nr = SMC_SC_NOP;
+#endif
 	struct trusty_irq_state *is =
 		container_of(work, struct trusty_irq_work, work)->is;
 
 	dev_dbg(is->dev, "%s\n", __func__);
 
+#if defined(CONFIG_MTK_NEBULA_VM_SUPPORT) && defined(CONFIG_GZ_SMC_CALL_REMAP)
+	do {
+		ret = trusty_std_call32(is->trusty_dev, smc_nop_nr, 0, 0, 0);
+		if (ret == SM_ERR_NOP_INTERRUPTED)
+			smc_nop_nr = SMC_SC_NOP;
+		else if (ret == SM_ERR_VM_NOP_INTERRUPTED)
+			smc_nop_nr = SMC_SC_VM_NOP;
+	} while ((ret == SM_ERR_NOP_INTERRUPTED) ||
+		 (ret == SM_ERR_VM_NOP_INTERRUPTED));
+#else
 	do {
 		ret = trusty_std_call32(is->trusty_dev, SMC_SC_NOP, 0, 0, 0);
 	} while (ret == SM_ERR_NOP_INTERRUPTED);
+#endif
 
 	if (ret != SM_ERR_NOP_DONE)
 		dev_err(is->dev, "%s: SMC_SC_NOP failed %d", __func__, ret);
@@ -247,7 +334,14 @@ irqreturn_t trusty_irq_handler(int irq, void *data)
 	}
 	spin_unlock(&is->normal_irqs_lock);
 
+#if defined(CONFIG_MTK_NEBULA_VM_SUPPORT) && defined(CONFIG_GZ_SMC_CALL_REMAP)
+	if (trusty_irq->vmm_specific)
+		schedule_work_on(raw_smp_processor_id(), &trusty_irq_work->vmm_work);
+	else
+		schedule_work_on(raw_smp_processor_id(), &trusty_irq_work->work);
+#else
 	schedule_work_on(raw_smp_processor_id(), &trusty_irq_work->work);
+#endif
 
 	dev_dbg(is->dev, "%s: irq %d done\n", __func__, irq);
 
@@ -330,7 +424,12 @@ static int trusty_irq_cpu_notify(struct notifier_block *nb,
 	return NOTIFY_OK;
 }
 
+#if defined(CONFIG_MTK_NEBULA_VM_SUPPORT) && defined(CONFIG_GZ_SMC_CALL_REMAP)
+static int trusty_irq_init_normal_irq(struct trusty_irq_state *is, int irq,
+				      bool vmm_specific)
+#else
 static int trusty_irq_init_normal_irq(struct trusty_irq_state *is, int irq)
+#endif
 {
 	int ret;
 	unsigned long irq_flags;
@@ -341,6 +440,8 @@ static int trusty_irq_init_normal_irq(struct trusty_irq_state *is, int irq)
 	trusty_irq = kzalloc(sizeof(*trusty_irq), GFP_KERNEL);
 	if (!trusty_irq)
 		return -ENOMEM;
+
+	trusty_irq->phy_irq_num = irq;
 
 #ifdef CONFIG_TRUSTY_INTERRUPT_MAP
 	if (spi_node) {
@@ -369,6 +470,9 @@ static int trusty_irq_init_normal_irq(struct trusty_irq_state *is, int irq)
 	trusty_irq->is = is;
 	trusty_irq->irq = irq;
 	trusty_irq->enable = true;
+#if defined(CONFIG_MTK_NEBULA_VM_SUPPORT) && defined(CONFIG_GZ_SMC_CALL_REMAP)
+	trusty_irq->vmm_specific = vmm_specific;
+#endif
 
 	spin_lock_irqsave(&is->normal_irqs_lock, irq_flags);
 	hlist_add_head(&trusty_irq->node, &is->normal_irqs.inactive);
@@ -390,7 +494,12 @@ err_request_irq:
 	return ret;
 }
 
+#if defined(CONFIG_MTK_NEBULA_VM_SUPPORT) && defined(CONFIG_GZ_SMC_CALL_REMAP)
+static int trusty_irq_init_per_cpu_irq(struct trusty_irq_state *is, int irq,
+				       bool vmm_specific)
+#else
 static int trusty_irq_init_per_cpu_irq(struct trusty_irq_state *is, int irq)
+#endif
 {
 	int ret;
 	unsigned int cpu;
@@ -411,9 +520,13 @@ static int trusty_irq_init_per_cpu_irq(struct trusty_irq_state *is, int irq)
 
 		trusty_irq->is = is;
 		hlist_add_head(&trusty_irq->node, &irqset->inactive);
+		trusty_irq->phy_irq_num = irq;
 		trusty_irq->irq = irq;
 		trusty_irq->percpu = true;
 		trusty_irq->percpu_ptr = trusty_irq_handler_data;
+#if defined(CONFIG_MTK_NEBULA_VM_SUPPORT) && defined(CONFIG_GZ_SMC_CALL_REMAP)
+		trusty_irq->vmm_specific = vmm_specific;
+#endif
 	}
 
 #ifdef CONFIG_TRUSTY_INTERRUPT_MAP
@@ -470,6 +583,38 @@ err_request_percpu_irq:
 	return ret;
 }
 
+#if defined(CONFIG_MTK_NEBULA_VM_SUPPORT) && defined(CONFIG_GZ_SMC_CALL_REMAP)
+static int trusty_smc_get_next_irq(struct trusty_irq_state *is,
+				   unsigned long min_irq, bool per_cpu,
+				   bool vmm_specific)
+{
+	return trusty_fast_call32(is->trusty_dev, SMC_FC_GET_NEXT_IRQ,
+				  min_irq, per_cpu, vmm_specific?1:0);
+}
+
+static int trusty_irq_init_one(struct trusty_irq_state *is,
+			       int irq, bool per_cpu, bool vmm_specific)
+{
+	int ret;
+
+	irq = trusty_smc_get_next_irq(is, irq, per_cpu, vmm_specific);
+	if (irq < 0)
+		return irq;
+
+	if (per_cpu)
+		ret = trusty_irq_init_per_cpu_irq(is, irq, vmm_specific);
+	else
+		ret = trusty_irq_init_normal_irq(is, irq, vmm_specific);
+
+	if (ret) {
+		dev_warn(is->dev,
+			 "failed to initialize irq %d, irq will be ignored\n",
+			 irq);
+	}
+
+	return irq + 1;
+}
+#else
 static int trusty_smc_get_next_irq(struct trusty_irq_state *is,
 				   unsigned long min_irq, bool per_cpu)
 {
@@ -499,6 +644,7 @@ static int trusty_irq_init_one(struct trusty_irq_state *is,
 
 	return irq + 1;
 }
+#endif
 
 static void trusty_irq_free_irqs(struct trusty_irq_state *is)
 {
@@ -563,6 +709,9 @@ static int trusty_irq_probe(struct platform_device *pdev)
 	unsigned long irq_flags;
 	struct trusty_irq_state *is;
 	work_func_t work_func;
+#if defined(CONFIG_MTK_NEBULA_VM_SUPPORT) && defined(CONFIG_GZ_SMC_CALL_REMAP)
+	work_func_t vmm_work_func;
+#endif
 
 	dev_dbg(&pdev->dev, "%s\n", __func__);
 #ifdef CONFIG_TRUSTY_INTERRUPT_MAP
@@ -605,18 +754,39 @@ static int trusty_irq_probe(struct platform_device *pdev)
 	else
 		work_func = trusty_irq_work_func;
 
+#if defined(CONFIG_MTK_NEBULA_VM_SUPPORT) && defined(CONFIG_GZ_SMC_CALL_REMAP)
+	if (trusty_get_api_version(is->trusty_dev) < TRUSTY_API_VERSION_SMP)
+		vmm_work_func = trusty_vmm_irq_work_func_locked_nop;
+	else
+		vmm_work_func = trusty_vmm_irq_work_func;
+#endif
+
 	for_each_possible_cpu(cpu) {
 		struct trusty_irq_work *trusty_irq_work;
 
 		trusty_irq_work = per_cpu_ptr(is->irq_work, cpu);
 		trusty_irq_work->is = is;
 		INIT_WORK(&trusty_irq_work->work, work_func);
+#if defined(CONFIG_MTK_NEBULA_VM_SUPPORT) && defined(CONFIG_GZ_SMC_CALL_REMAP)
+		INIT_WORK(&trusty_irq_work->vmm_work, vmm_work_func);
+#endif
 	}
 
+#if defined(CONFIG_MTK_NEBULA_VM_SUPPORT) && defined(CONFIG_GZ_SMC_CALL_REMAP)
+	for (irq = 0; irq >= 0;)
+		irq = trusty_irq_init_one(is, irq, true, false);
+	for (irq = 0; irq >= 0;)
+		irq = trusty_irq_init_one(is, irq, false, false);
+	for (irq = 0; irq >= 0;)
+		irq = trusty_irq_init_one(is, irq, true, true);
+	for (irq = 0; irq >= 0;)
+		irq = trusty_irq_init_one(is, irq, false, true);
+#else
 	for (irq = 0; irq >= 0;)
 		irq = trusty_irq_init_one(is, irq, true);
 	for (irq = 0; irq >= 0;)
 		irq = trusty_irq_init_one(is, irq, false);
+#endif
 
 	is->cpu_notifier.notifier_call = trusty_irq_cpu_notify;
 	ret = register_hotcpu_notifier(&is->cpu_notifier);
@@ -650,6 +820,9 @@ err_alloc_pending_percpu_irqs:
 
 		trusty_irq_work = per_cpu_ptr(is->irq_work, cpu);
 		flush_work(&trusty_irq_work->work);
+#if defined(CONFIG_MTK_NEBULA_VM_SUPPORT) && defined(CONFIG_GZ_SMC_CALL_REMAP)
+		flush_work(&trusty_irq_work->vmm_work);
+#endif
 	}
 	free_percpu(is->irq_work);
 err_alloc_irq_work:
@@ -685,6 +858,9 @@ static int trusty_irq_remove(struct platform_device *pdev)
 
 		trusty_irq_work = per_cpu_ptr(is->irq_work, cpu);
 		flush_work(&trusty_irq_work->work);
+#if defined(CONFIG_MTK_NEBULA_VM_SUPPORT) && defined(CONFIG_GZ_SMC_CALL_REMAP)
+		flush_work(&trusty_irq_work->vmm_work);
+#endif
 	}
 	free_percpu(is->irq_work);
 	kfree(is);

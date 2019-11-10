@@ -983,7 +983,8 @@ static int tpd_touchinfo(struct touch_info *cinfo, struct touch_info *pinfo)
 
 	/*get the number of the touch points*/
 	cinfo->count = data[2] & 0x0f;
-
+	if (cinfo->count >= 10)
+		cinfo->count = 10;
 	/* TPD_DEBUG("Number of touch points = %d\n", cinfo->count); */
 
 	/* TPD_DEBUG("Procss raw data...\n"); */

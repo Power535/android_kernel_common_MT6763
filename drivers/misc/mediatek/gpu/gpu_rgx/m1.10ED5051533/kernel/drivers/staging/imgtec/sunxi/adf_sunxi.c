@@ -292,10 +292,10 @@ sunxi_buffer_to_layer_info(const struct adf_buffer *buf,
 		layer->fb.pre_multiply = true;
 		break;
 	case ADF_BUFFER_BLENDING_COVERAGE_EXT:
-		dev_err(sunxi.dev, "Coverage blending not implemented\n");
+		dev_info(sunxi.dev, "Coverage blending not implemented\n");
 		return -1;
 	default:
-		dev_err(sunxi.dev, "Unknown blending type %d\n",
+		dev_info(sunxi.dev, "Unknown blending type %d\n",
 			ext_config_data->blend_type);
 		return -1;
 
@@ -368,7 +368,7 @@ adf_sunxi_release(struct adf_obj *obj, struct inode *inode, struct file *file)
 	release_fence = adf_device_post(obj->parent, NULL, 0, NULL, 0, NULL, 0);
 
 	if (IS_ERR_OR_NULL(release_fence)) {
-		dev_err(obj->parent->dev, "Failed to queue null flip command (err=%d)\n",
+		dev_info(obj->parent->dev, "Failed to queue null flip command (err=%d)\n",
 			(int)PTR_ERR(release_fence));
 		return;
 	}
@@ -483,7 +483,7 @@ static int adf_sunxi_validate(struct adf_device *dev, struct adf_post *cfg,
 	}
 
 	if (!post_ext) {
-		dev_err(dev->dev, "Invalid custom data pointer\n");
+		dev_info(dev->dev, "Invalid custom data pointer\n");
 		return -EINVAL;
 	}
 	post_id = post_ext->post_id;
@@ -491,7 +491,7 @@ static int adf_sunxi_validate(struct adf_device *dev, struct adf_post *cfg,
 	expected_custom_data_size = sizeof(struct adf_post_ext)
 		+ cfg->n_bufs * sizeof(struct adf_buffer_config_ext);
 	if (cfg->custom_data_size != expected_custom_data_size) {
-		dev_err(dev->dev, "Invalid custom data size - expected %u for %u buffers, got %u\n",
+		dev_info(dev->dev, "Invalid custom data size - expected %u for %u buffers, got %u\n",
 			expected_custom_data_size, cfg->n_bufs,
 			cfg->custom_data_size);
 		return -EINVAL;
@@ -526,14 +526,14 @@ static int adf_sunxi_validate(struct adf_device *dev, struct adf_post *cfg,
 	pipe_assignments =
 		kzalloc(sizeof(*pipe_assignments), GFP_KERNEL);
 	if (!pipe_assignments) {
-		dev_err(dev->dev, "Failed to allocate pipe assignment state\n");
+		dev_info(dev->dev, "Failed to allocate pipe assignment state\n");
 		err = -ENOMEM;
 		goto err_free_assignments;
 	}
 
 
 	if (cfg->n_bufs > MAX_BUFFERS) {
-		dev_err(dev->dev, "Trying to post %d buffers (max %d)\n",
+		dev_info(dev->dev, "Trying to post %d buffers (max %d)\n",
 			MAX_BUFFERS, NUM_OVERLAYS);
 		err = -EINVAL;
 		goto err_free_assignments;
@@ -546,7 +546,7 @@ static int adf_sunxi_validate(struct adf_device *dev, struct adf_post *cfg,
 
 		dpy = get_buf_display(buf);
 		if (dpy < 0) {
-			dev_err(dev->dev, "Buffer %d has invalid assigned overlay\n",
+			dev_info(dev->dev, "Buffer %d has invalid assigned overlay\n",
 				i);
 			err = -EINVAL;
 			goto err_free_assignments;
@@ -559,7 +559,7 @@ static int adf_sunxi_validate(struct adf_device *dev, struct adf_post *cfg,
 				ebuf);
 
 		if (!buffer_is_sane) {
-			dev_err(dev->dev, "Buffer %d failed sanity check\n",
+			dev_info(dev->dev, "Buffer %d failed sanity check\n",
 				i);
 			err = -EINVAL;
 			goto err_free_assignments;
@@ -569,7 +569,7 @@ static int adf_sunxi_validate(struct adf_device *dev, struct adf_post *cfg,
 			/* This should be cleanly rejected when trying to assign
 			 * an overlay engine
 			 */
-			dev_err(dev->dev, "Buffer %d has unrecognised format 0x%08x\n",
+			dev_info(dev->dev, "Buffer %d has unrecognised format 0x%08x\n",
 				i, buf->format);
 			err = -EINVAL;
 			goto err_free_assignments;
@@ -634,7 +634,7 @@ static int adf_sunxi_validate(struct adf_device *dev, struct adf_post *cfg,
 	return 0;
 err_free_assignments:
 	if (is_post)
-		dev_err(dev->dev, "Failed validate for post\n");
+		dev_info(dev->dev, "Failed validate for post\n");
 	kfree(pipe_assignments);
 	return err;
 }
@@ -678,7 +678,7 @@ static void adf_sunxi_post(struct adf_device *adf_dev, struct adf_post *cfg,
 
 	pipe_assignments = driver_state;
 	if (!pipe_assignments && cfg->n_bufs != 0) {
-		dev_err(adf_dev->dev, "Invalid driver state\n");
+		dev_info(adf_dev->dev, "Invalid driver state\n");
 		return;
 	}
 
@@ -687,7 +687,7 @@ static void adf_sunxi_post(struct adf_device *adf_dev, struct adf_post *cfg,
 
 	disp_data = kzalloc(sizeof(*disp_data), GFP_KERNEL);
 	if (!disp_data) {
-		dev_err(adf_dev->dev, "Failed to allocate post data");
+		dev_info(adf_dev->dev, "Failed to allocate post data");
 		return;
 	}
 
@@ -695,7 +695,7 @@ static void adf_sunxi_post(struct adf_device *adf_dev, struct adf_post *cfg,
 
 		dpy = get_buf_display(&cfg->bufs[buf]);
 		if (dpy < 0) {
-			dev_err(adf_dev->dev, "Invalid overlay %p assigned to layer %d",
+			dev_info(adf_dev->dev, "Invalid overlay %p assigned to layer %d",
 				cfg->bufs[buf].overlay_engine, buf);
 			goto err_free_data;
 		}
@@ -706,7 +706,7 @@ static void adf_sunxi_post(struct adf_device *adf_dev, struct adf_post *cfg,
 			&disp_data->layer_info[dpy][num_buffers[dpy]]);
 
 		if (err) {
-			dev_err(adf_dev->dev, "Failed to setup layer info (%d)\n",
+			dev_info(adf_dev->dev, "Failed to setup layer info (%d)\n",
 				err);
 			goto err_free_data;
 		}
@@ -732,13 +732,13 @@ static void adf_sunxi_post(struct adf_device *adf_dev, struct adf_post *cfg,
 
 	err = sunxi.disp_ops.dispc_gralloc_queue(disp_data);
 	if (err)
-		dev_err(adf_dev->dev, "Failed to queue post (%d)\n", err);
+		dev_info(adf_dev->dev, "Failed to queue post (%d)\n", err);
 
 	post_count = atomic_add_return(1, &sunxi.postcount);
 
 	if (wait_event_timeout(sunxi.post_wait_queue,
 		sunxi_post_completed(post_count-1), timeout) == 0) {
-		dev_err(sunxi.dev, "Timeout waiting for post callback\n");
+		dev_info(sunxi.dev, "Timeout waiting for post callback\n");
 
 	}
 
@@ -825,7 +825,7 @@ static int sunxi_disp_hotplug_callback(void *user_data,
 	intf->num_supported_modes = 0;
 	switch (state) {
 	default:
-		dev_err(sunxi.dev, "%s: Invalid hotplug state\n", __func__);
+		dev_info(sunxi.dev, "%s: Invalid hotplug state\n", __func__);
 		/* Fall-thru, treat as disconnect */
 	case DISP_HOTPLUG_DISCONNECT:
 		intf->connected = false;
@@ -846,13 +846,13 @@ static int sunxi_disp_hotplug_callback(void *user_data,
 
 	intf->num_supported_modes = mode_count;
 	if (mode_count == 0) {
-		dev_warn(sunxi.dev, "%s: No supported modes found for display id %d - forcing 720p\n",
+		dev_info(sunxi.dev, "%s: No supported modes found for display id %d - forcing 720p\n",
 			__func__, intf->display_id);
 		intf->num_supported_modes = 1;
 		intf->supported_modes = kzalloc(
 			sizeof(*intf->supported_modes), GFP_KERNEL);
 		if (!intf->supported_modes) {
-			dev_err(sunxi.dev, "%s: Failed to allocate mode list\n",
+			dev_info(sunxi.dev, "%s: Failed to allocate mode list\n",
 				__func__);
 			goto err_out;
 		}
@@ -868,7 +868,7 @@ static int sunxi_disp_hotplug_callback(void *user_data,
 			mode_count * sizeof(*intf->supported_modes),
 			GFP_KERNEL);
 		if (!intf->supported_modes) {
-			dev_err(sunxi.dev, "%s: Failed to allocate mode list\n",
+			dev_info(sunxi.dev, "%s: Failed to allocate mode list\n",
 				__func__);
 			goto err_out;
 		}
@@ -893,7 +893,7 @@ static int sunxi_disp_hotplug_callback(void *user_data,
 	ret = adf_interface_set_mode(&intf->interface,
 		&intf->supported_modes[0]);
 	if (ret) {
-		dev_err(sunxi.dev, "%s: Failed hotplug modeset (%d)\n",
+		dev_info(sunxi.dev, "%s: Failed hotplug modeset (%d)\n",
 			__func__, ret);
 		return ret;
 	}
@@ -967,7 +967,7 @@ find_matching_disp_tv_mode_id(struct drm_mode_modeinfo *mode)
 			return hdmi_valid_modes[idx].mode;
 		}
 	}
-	dev_err(sunxi.dev, "%s: No matching disp_tv_mode for %ux%u@%u\n",
+	dev_info(sunxi.dev, "%s: No matching disp_tv_mode for %ux%u@%u\n",
 		__func__, mode->hdisplay, mode->vdisplay, mode->vrefresh);
 	return 0;
 }
@@ -997,14 +997,14 @@ static int adf_sunxi_modeset(struct adf_interface *intf,
 
 	err = sunxi.disp_ops.hdmi_disable(sunxi_intf->display_id);
 	if (err) {
-		dev_err(sunxi.dev, "%s: Failed to disable display id %d for modeset\n",
+		dev_info(sunxi.dev, "%s: Failed to disable display id %d for modeset\n",
 			__func__, sunxi_intf->display_id);
 		return -EFAULT;
 	}
 
 	err = sunxi.disp_ops.hdmi_set_mode(sunxi_intf->display_id, disp_mode);
 	if (err) {
-		dev_err(sunxi.dev, "%s: Failed to set mode %ux%u@%u (id %d) to display id %d\n",
+		dev_info(sunxi.dev, "%s: Failed to set mode %ux%u@%u (id %d) to display id %d\n",
 			__func__, mode->hdisplay, mode->vdisplay,
 			mode->vrefresh, disp_mode, sunxi_intf->display_id);
 		return -EFAULT;
@@ -1012,7 +1012,7 @@ static int adf_sunxi_modeset(struct adf_interface *intf,
 
 	err = sunxi.disp_ops.hdmi_enable(sunxi_intf->display_id);
 	if (err) {
-		dev_err(sunxi.dev, "%s: Failed to enable display id %d after modeset\n",
+		dev_info(sunxi.dev, "%s: Failed to enable display id %d after modeset\n",
 			__func__, sunxi_intf->display_id);
 		return -EFAULT;
 	}
@@ -1031,7 +1031,7 @@ static int adf_sunxi_alloc_simple_buffer(struct adf_interface *intf, u16 w,
 	struct adf_device *dev = intf->base.parent;
 
 	if (bpp == 0) {
-		dev_err(dev->dev, "%s: unknown format (0x%08x)\n",
+		dev_info(dev->dev, "%s: unknown format (0x%08x)\n",
 			__func__, format);
 		err = -EINVAL;
 		goto err_out;
@@ -1041,14 +1041,14 @@ static int adf_sunxi_alloc_simple_buffer(struct adf_interface *intf, u16 w,
 		(1 << sunxi.ion_heap_id), 0);
 	if (IS_ERR(hdl)) {
 		err = PTR_ERR(hdl);
-		dev_err(dev->dev, "%s: ion_alloc failed (%d)\n",
+		dev_info(dev->dev, "%s: ion_alloc failed (%d)\n",
 			__func__, err);
 		goto err_out;
 	}
 	*dma_buf = ion_share_dma_buf(sunxi.ion_client, hdl);
 	if (IS_ERR(*dma_buf)) {
 		err = PTR_ERR(hdl);
-		dev_err(dev->dev, "%s: ion_share_dma_buf failed (%d)\n",
+		dev_info(dev->dev, "%s: ion_share_dma_buf failed (%d)\n",
 			__func__, err);
 		goto err_free_buffer;
 
@@ -1284,20 +1284,20 @@ static int adf_init_lcd_interface(struct sunxi_interface *interface)
 		ADF_INTF_FLAG_PRIMARY, &adf_sunxi_interface_ops,
 		interface->name);
 	if (err) {
-		dev_err(sunxi.dev, "%s: Failed to init adf interface %d (%d)\n",
+		dev_info(sunxi.dev, "%s: Failed to init adf interface %d (%d)\n",
 			__func__, interface->display_id, err);
 		goto err_out;
 	}
 	height = sunxi.disp_ops.get_screen_height(interface->display_id);
 	if (height < 0) {
-		dev_err(sunxi.dev, "%s: Failed to query display height (%d)\n",
+		dev_info(sunxi.dev, "%s: Failed to query display height (%d)\n",
 			__func__, height);
 		err = -EFAULT;
 		goto err_out;
 	}
 	width = sunxi.disp_ops.get_screen_width(interface->display_id);
 	if (width < 0) {
-		dev_err(sunxi.dev, "%s: Failed to query display width (%d)\n",
+		dev_info(sunxi.dev, "%s: Failed to query display width (%d)\n",
 			__func__, width);
 		err = -EFAULT;
 		goto err_out;
@@ -1306,7 +1306,7 @@ static int adf_init_lcd_interface(struct sunxi_interface *interface)
 	interface->supported_modes = kzalloc(sizeof(*interface->supported_modes),
 		GFP_KERNEL);
 	if (!interface->supported_modes) {
-		dev_err(sunxi.dev, "%s: Failed to allocate mode struct\n",
+		dev_info(sunxi.dev, "%s: Failed to allocate mode struct\n",
 			__func__);
 		err = -ENOMEM;
 		goto err_out;
@@ -1317,7 +1317,7 @@ static int adf_init_lcd_interface(struct sunxi_interface *interface)
 	err = adf_hotplug_notify_connected(&interface->interface,
 		interface->supported_modes, interface->num_supported_modes);
 	if (err) {
-		dev_err(sunxi.dev, "%s: Failed to notify connected (%d)\n",
+		dev_info(sunxi.dev, "%s: Failed to notify connected (%d)\n",
 			__func__, err);
 		goto err_out;
 	}
@@ -1325,13 +1325,13 @@ static int adf_init_lcd_interface(struct sunxi_interface *interface)
 	err = adf_interface_set_mode(&interface->interface,
 		&interface->supported_modes[0]);
 	if (err) {
-		dev_err(sunxi.dev, "%s: Failed initial modeset (%d)\n",
+		dev_info(sunxi.dev, "%s: Failed initial modeset (%d)\n",
 			__func__, err);
 		goto err_out;
 	}
 	err = sunxi.disp_ops.vsync_callback(NULL, sunxi_disp_vsync_callback);
 	if (err) {
-		dev_err(sunxi.dev, "%s: Failed to set vsync callback (%d)\n",
+		dev_info(sunxi.dev, "%s: Failed to set vsync callback (%d)\n",
 			__func__, err);
 		goto err_out;
 	}
@@ -1354,7 +1354,7 @@ static int adf_init_hdmi_interface(struct sunxi_interface *interface)
 		ADF_INTF_FLAG_EXTERNAL, &adf_sunxi_interface_ops,
 		interface->name);
 	if (err) {
-		dev_err(sunxi.dev, "%s: Failed to init adf interface %d (%d)\n",
+		dev_info(sunxi.dev, "%s: Failed to init adf interface %d (%d)\n",
 			__func__, interface->display_id, err);
 		goto err_out;
 	}
@@ -1364,7 +1364,7 @@ static int adf_init_hdmi_interface(struct sunxi_interface *interface)
 		interface->connected = true;
 		break;
 	default:
-		dev_err(sunxi.dev, "%s: Error querying hotplug state for display id %d\n",
+		dev_info(sunxi.dev, "%s: Error querying hotplug state for display id %d\n",
 			__func__, interface->display_id);
 		hotplug_state = DISP_HOTPLUG_DISCONNECT;
 		/* Fall-thru, act as if disconnected*/
@@ -1391,7 +1391,7 @@ static void adf_init_interface(struct sunxi_interface *interface, int id)
 
 	switch (interface->disp_type) {
 	default:
-		dev_err(sunxi.dev, "%s: Unsupported interface type %d for display %d\n",
+		dev_info(sunxi.dev, "%s: Unsupported interface type %d for display %d\n",
 			__func__, interface->disp_type, id);
 		interface->disp_type = DISP_OUTPUT_TYPE_NONE;
 		/* Fall-thru */
@@ -1426,21 +1426,21 @@ static int adf_sunxi_probe(struct platform_device *pdev)
 	err = adf_device_init(&sunxi.device, sunxi.dev,
 		&adf_sunxi_device_ops, "sunxi_device");
 	if (err) {
-		dev_err(sunxi.dev, "Failed to init ADF device (%d)\n",
+		dev_info(sunxi.dev, "Failed to init ADF device (%d)\n",
 			err);
 		goto err_out;
 	}
 
 	err = disp_get_composer_ops(&sunxi.disp_ops);
 	if (err) {
-		dev_err(sunxi.dev, "Failed to get composer ops (%d)\n",
+		dev_info(sunxi.dev, "Failed to get composer ops (%d)\n",
 			err);
 		goto err_free_overlays;
 	}
 	/* Set the retire callback */
 	err = sunxi.disp_ops.set_retire_callback(sunxi_retire_callback);
 	if (err) {
-		dev_err(sunxi.dev, "Failed to set retire callback (%d)\n",
+		dev_info(sunxi.dev, "Failed to set retire callback (%d)\n",
 			err);
 		goto err_free_overlays;
 	}
@@ -1449,14 +1449,14 @@ static int adf_sunxi_probe(struct platform_device *pdev)
 	 */
 	err = sunxi.disp_ops.hdmi_set_mode(1, DISP_TV_MOD_720P_60HZ);
 	if (err) {
-		dev_warn(sunxi.dev, "Failed to enable initial hdmi mode on dpy 1 (%d)\n",
+		dev_info(sunxi.dev, "Failed to enable initial hdmi mode on dpy 1 (%d)\n",
 			err);
 		/* Not fatal */
 	}
 	dev_dbg(sunxi.dev, "%s: %d hdmi_enable\n", __func__, __LINE__);
 	err = sunxi.disp_ops.hdmi_enable(1);
 	if (err) {
-		dev_warn(sunxi.dev, "Failed to enable hdmi on dpy 1 (%d)\n",
+		dev_info(sunxi.dev, "Failed to enable hdmi on dpy 1 (%d)\n",
 			err);
 		/* Not fatal */
 	}
@@ -1473,7 +1473,7 @@ static int adf_sunxi_probe(struct platform_device *pdev)
 				&sunxi.device, &adf_sunxi_overlay_ops,
 				"sunxi_overlay_%d-%d", dpy, ovl);
 			if (err) {
-				dev_err(sunxi.dev, "Failed to init overlay %d-%d (%d)\n",
+				dev_info(sunxi.dev, "Failed to init overlay %d-%d (%d)\n",
 					dpy, ovl, err);
 				goto err_free_overlays;
 			}
@@ -1482,7 +1482,7 @@ static int adf_sunxi_probe(struct platform_device *pdev)
 				&sunxi.interfaces[dpy].interface);
 
 			if (err) {
-				dev_err(sunxi.dev, "Failed to attach overlay %d-%d (%d)\n",
+				dev_info(sunxi.dev, "Failed to attach overlay %d-%d (%d)\n",
 					dpy, ovl, err);
 				goto err_free_overlays;
 			}
@@ -1496,7 +1496,7 @@ static int adf_sunxi_probe(struct platform_device *pdev)
 
 	if (IS_ERR(sunxi.ion_client)) {
 		err = PTR_ERR(sunxi.ion_client);
-		dev_err(sunxi.dev, "Failed to create ion client (%d)\n",
+		dev_info(sunxi.dev, "Failed to create ion client (%d)\n",
 			err);
 		goto err_free_overlays;
 	}
@@ -1511,7 +1511,7 @@ static int adf_sunxi_probe(struct platform_device *pdev)
 		&adf_sunxi_fb_ops,
 		"adf_sunxi_fb");
 	if (err) {
-		dev_err(sunxi.dev, "Failed to init ADF fbdev (%d)\n", err);
+		dev_info(sunxi.dev, "Failed to init ADF fbdev (%d)\n", err);
 		goto err_free_ion_client;
 	}
 #endif
@@ -1521,7 +1521,7 @@ static int adf_sunxi_probe(struct platform_device *pdev)
 
 	sunxi.debugfs_val_log = debugfs_create_file("adf_val_log", 0444,
 		NULL, NULL, &adf_sunxi_debugfs_val_fops);
-	dev_err(sunxi.dev, "Successfully loaded adf_sunxi\n");
+	dev_info(sunxi.dev, "Successfully loaded adf_sunxi\n");
 
 	return 0;
 #ifdef SUPPORT_ADF_SUNXI_FBDEV

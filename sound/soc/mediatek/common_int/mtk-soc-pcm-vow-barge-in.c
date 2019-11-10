@@ -164,6 +164,14 @@ static int use_smart_pa_set(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
+static int vow_barge_in_irq_id_get(struct snd_kcontrol *kcontrol,
+				   struct snd_ctl_elem_value *ucontrol)
+{
+
+	ucontrol->value.integer.value[0] = Soc_Aud_IRQ_MCU_MODE_IRQ7_MCU_MODE;
+	return 0;
+}
+
 static const struct snd_kcontrol_new vow_barge_in_controls[] = {
 	SOC_ENUM_EXT("vow_barge_in_use_hw_src", vow_barge_in_enum[0],
 			use_hw_src_get, use_hw_src_set),
@@ -171,6 +179,8 @@ static const struct snd_kcontrol_new vow_barge_in_controls[] = {
 			use_smart_pa_get, use_smart_pa_set),
 /*	SOC_ENUM_EXT("vow_barge_in_pcm_dump", vow_barge_in_enum[2], */
 /*		     mtk_vow_barge_in_pcm_dump_get, mtk_vow_barge_in_pcm_dump_set), */
+	SOC_SINGLE_EXT("vow_barge_in_irq_id", SND_SOC_NOPM, 0, 0x3ffff, 0,
+		       vow_barge_in_irq_id_get, NULL),
 };
 
 bool set_interconnection(unsigned int connection_state, bool use_smart_pa, bool use_general_src)

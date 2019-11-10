@@ -242,12 +242,6 @@ void *mt_ddrphy_chb_base_get(void)
 }
 EXPORT_SYMBOL(mt_ddrphy_chb_base_get);
 
-unsigned int get_dram_type(void)
-{
-	return DRAM_TYPE;
-}
-EXPORT_SYMBOL(get_dram_type);
-
 #ifdef SW_TX_TRACKING
 static tx_result read_dram_mode_reg(
 unsigned int mr_index, unsigned int *mr_value,
@@ -439,37 +433,22 @@ static tx_result dramc_tx_tracking(int channel)
 	}
 
 	shu_level = (Reg_Readl(DRAMC_AO_SHUSTATUS) >> 1) & 0x3;
-	if (DRAM_TYPE == TYPE_LPDDR4) {
-		if ((shu_level == 0) || (shu_level == 1)) {
-			tx_freq_ratio[0] = 0x8;
-			tx_freq_ratio[1] = 0x8;
-			tx_freq_ratio[2] = 0x5;
-		} else {
-			tx_freq_ratio[0] = 0xc;
-			tx_freq_ratio[1] = 0xc;
-			tx_freq_ratio[2] = 0x8;
-		}
-		max_pi_adj[0] = 3;
-		max_pi_adj[1] = 3;
-		max_pi_adj[2] = 2;
+	if (shu_level == 0) {
+		tx_freq_ratio[0] = 0x8;
+		tx_freq_ratio[1] = 0x7;
+		tx_freq_ratio[2] = 0x4;
+	} else if (shu_level == 1) {
+		tx_freq_ratio[0] = 0xa;
+		tx_freq_ratio[1] = 0x8;
+		tx_freq_ratio[2] = 0x5;
 	} else {
-		if (shu_level == 0) {
-			tx_freq_ratio[0] = 0x8;
-			tx_freq_ratio[1] = 0x7;
-			tx_freq_ratio[2] = 0x4;
-		} else if (shu_level == 1) {
-			tx_freq_ratio[0] = 0xa;
-			tx_freq_ratio[1] = 0x8;
-			tx_freq_ratio[2] = 0x5;
-		} else {
-			tx_freq_ratio[0] = 0x10;
-			tx_freq_ratio[1] = 0xd;
-			tx_freq_ratio[2] = 0x8;
-		}
-		max_pi_adj[0] = 10;
-		max_pi_adj[1] = 8;
-		max_pi_adj[2] = 4;
+		tx_freq_ratio[0] = 0x10;
+		tx_freq_ratio[1] = 0xd;
+		tx_freq_ratio[2] = 0x8;
 	}
+	max_pi_adj[0] = 10;
+	max_pi_adj[1] = 8;
+	max_pi_adj[2] = 4;
 
 	shu_offset_dramc = 0x600 * shu_level;
 	dqsosc_inc = (Reg_Readl(DRAMC_AO_DQSOSC_PRD + shu_offset_dramc) >> 16) & 0xFF;
@@ -511,9 +490,6 @@ static tx_result dramc_tx_tracking(int channel)
 	temp = Reg_Readl(DRAMC_AO_SPCMDCTRL);
 	mr4_on_off = (temp >> 29) & 0x1;
 	Reg_Sync_Writel(DRAMC_AO_SPCMDCTRL, temp | (1<<29));
-	mb(); /* flush memory */
-	udelay(2);
-
 	for (rank = 0; rank < 2; rank++) {
 		res = auto_dram_dqs_osc(rank, dramc_ao_chx_base, dramc_nao_chx_base);
 		if (res != TX_DONE)
@@ -641,94 +617,6 @@ void dump_tx_log(tx_result res)
 		pr_err("[DRAMC] TX unknown error\n");
 		break;
 	}
-}
-
-#endif
-
-#if defined(DRAMC_MEMTEST_DEBUG_SUPPORT)
-unsigned int mt_dramc_chn_get(unsigned int emi_cona)
-{
-	switch ((emi_cona >> 8) & 0x3) {
-	case 0:
-		return 1;
-	case 1:
-		return 2;
-	default:
-		pr_info("[LastDRAMC] invalid channel num (emi_cona = 0x%x)\n", emi_cona);
-	}
-	return 0;
-}
-
-unsigned int mt_dramc_chp_get(unsigned int emi_cona)
-{
-	unsigned int chp;
-
-	chp = (emi_cona >> 2) & 0x3;
-
-	return chp + 7;
-}
-
-phys_addr_t mt_dramc_rankbase_get(unsigned int rank)
-{
-	if (rank >= get_dram_info->rank_num)
-		return 0;
-
-	return get_dram_info->rank_info[rank].start;
-}
-
-unsigned int mt_dramc_ta_support_ranks(void)
-{
-	return dram_rank_num;
-}
-
-unsigned int read_dram_mode_reg_by_rank(
-		unsigned int mr_index, unsigned int *mr_value,
-		unsigned int rank, unsigned int channel)
-{
-	unsigned int temp;
-	void __iomem *dramc_ao_chx_base;
-	void __iomem *dramc_nao_chx_base;
-	void __iomem *ddrphy_chx_base;
-	ssize_t ret;
-	unsigned long save_flags;
-	unsigned int res;
-
-	ret = 0;
-
-	if (channel == 0) {
-		dramc_ao_chx_base = DRAMC_AO_CHA_BASE_ADDR;
-		dramc_nao_chx_base = DRAMC_NAO_CHA_BASE_ADDR;
-		ddrphy_chx_base = DDRPHY_CHA_BASE_ADDR;
-	} else {
-		dramc_ao_chx_base = DRAMC_AO_CHB_BASE_ADDR;
-		dramc_nao_chx_base = DRAMC_NAO_CHB_BASE_ADDR;
-		ddrphy_chx_base = DDRPHY_CHB_BASE_ADDR;
-	}
-
-	local_irq_save(save_flags);
-
-	if (acquire_dram_ctrl() != 0) {
-		pr_info("[DRAMC] can NOT get SPM HW SEMAPHORE!\n");
-		local_irq_restore(save_flags);
-		return -1;
-	}
-
-	temp = Reg_Readl(DRAMC_AO_MRS) & ~(0x3<<26);
-	Reg_Sync_Writel(DRAMC_AO_MRS, temp | (rank<<26));
-
-	res = read_dram_mode_reg(mr_index, mr_value, dramc_ao_chx_base, dramc_nao_chx_base);
-	if (res != TX_DONE)
-		ret = -1;
-
-	temp = Reg_Readl(DRAMC_AO_MRS) & ~(0x3<<26);
-	Reg_Sync_Writel(DRAMC_AO_MRS, temp);
-
-	if (release_dram_ctrl() != 0)
-		pr_info("[DRAMC] release SPM HW SEMAPHORE fail!\n");
-
-	local_irq_restore(save_flags);
-
-	return ret;
 }
 #endif
 
@@ -1378,8 +1266,6 @@ unsigned int get_dram_data_rate(void)
 			u4DataRate = 3000;
 		else if (u4DataRate == 2652)
 			u4DataRate = 2667;
-		else if (u4DataRate == 2392)
-			u4DataRate = 2400;
 		else if (u4DataRate == 1599)
 			u4DataRate = 1600;
 		else
@@ -1433,9 +1319,7 @@ int dram_steps_freq(unsigned int step)
 	case 1:
 		if (DRAM_TYPE == TYPE_LPDDR3)
 			freq = 1333;
-		else if (DRAM_TYPE == TYPE_LPDDR4)
-			freq = 2400;
-		else if (DRAM_TYPE == TYPE_LPDDR4X)
+		else if ((DRAM_TYPE == TYPE_LPDDR4) || (DRAM_TYPE == TYPE_LPDDR4X))
 			freq = 2667;
 		break;
 	case 2:

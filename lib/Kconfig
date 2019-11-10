@@ -185,6 +185,9 @@ config CRC8
 	  when they need to do cyclic redundancy check according CRC8
 	  algorithm. Module will be called crc8.
 
+config XXHASH
+	tristate
+
 config AUDIT_GENERIC
 	bool
 	depends on AUDIT && !AUDIT_ARCH
@@ -242,6 +245,14 @@ config LZ4_DECOMPRESS
 config LZ4K
 	bool "LZ4K compression"
 	default n
+
+config ZSTD_COMPRESS
+	select XXHASH
+	tristate
+
+config ZSTD_DECOMPRESS
+	select XXHASH
+	tristate
 
 source "lib/xz/Kconfig"
 

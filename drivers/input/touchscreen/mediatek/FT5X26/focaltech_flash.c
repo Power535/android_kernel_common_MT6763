@@ -2872,19 +2872,19 @@ int fts_ctpm_fw_upgrade_with_app_file(struct i2c_client *client, char *firmware_
 	else if ((fts_updateinfo_curr.CHIP_ID == 0x11) || (fts_updateinfo_curr.CHIP_ID == 0x12)
 		|| (fts_updateinfo_curr.CHIP_ID == 0x13) || (fts_updateinfo_curr.CHIP_ID == 0x14))
 		i_ret = fts_5x36_ctpm_fw_upgrade(client, pbt_buf, fwsize);
-	else if ((fts_updateinfo_curr.CHIP_ID == 0x06))
+	else if (fts_updateinfo_curr.CHIP_ID == 0x06)
 		i_ret = fts_6x06_ctpm_fw_upgrade(client, pbt_buf, fwsize);
-	else if ((fts_updateinfo_curr.CHIP_ID == 0x36))
+	else if (fts_updateinfo_curr.CHIP_ID == 0x36)
 		i_ret = fts_6x36_ctpm_fw_upgrade(client, pbt_buf, fwsize);
-	else if ((fts_updateinfo_curr.CHIP_ID == 0x64))
+	else if (fts_updateinfo_curr.CHIP_ID == 0x64)
 		i_ret = fts_6336GU_ctpm_fw_upgrade(client, pbt_buf, fwsize);
-	else if ((fts_updateinfo_curr.CHIP_ID == 0x54))
+	else if (fts_updateinfo_curr.CHIP_ID == 0x54)
 		i_ret = fts_5x46_ctpm_fw_upgrade(client, pbt_buf, fwsize);
-	else if ((fts_updateinfo_curr.CHIP_ID == 0x58))
+	else if (fts_updateinfo_curr.CHIP_ID == 0x58)
 		i_ret =  fts_5822_ctpm_fw_upgrade(client, pbt_buf, fwsize);
-	else if ((fts_updateinfo_curr.CHIP_ID == 0x59))
+	else if (fts_updateinfo_curr.CHIP_ID == 0x59)
 		i_ret =  fts_5x26_ctpm_fw_upgrade(client, pbt_buf, fwsize);
-	else if ((fts_updateinfo_curr.CHIP_ID == 0x86)) {
+	else if (fts_updateinfo_curr.CHIP_ID == 0x86) {
 		/*call the upgrade function*/
 		i_ret = fts_8606_writepram(client, aucFW_PRAM_BOOT, sizeof(aucFW_PRAM_BOOT));
 
@@ -2894,7 +2894,7 @@ int fts_ctpm_fw_upgrade_with_app_file(struct i2c_client *client, char *firmware_
 		}
 
 		i_ret =  fts_8606_ctpm_fw_upgrade(client, pbt_buf, fwsize);
-	} else if ((fts_updateinfo_curr.CHIP_ID == 0x87)) {
+	} else if (fts_updateinfo_curr.CHIP_ID == 0x87) {
 		/*call the upgrade function*/
 		i_ret = fts_8716_writepram(client, aucFW_PRAM_BOOT, sizeof(aucFW_PRAM_BOOT));
 
@@ -2904,7 +2904,7 @@ int fts_ctpm_fw_upgrade_with_app_file(struct i2c_client *client, char *firmware_
 		}
 
 		i_ret =  fts_8716_ctpm_fw_upgrade(client, pbt_buf, fwsize);
-	} else if ((fts_updateinfo_curr.CHIP_ID == 0x0E))
+	} else if (fts_updateinfo_curr.CHIP_ID == 0x0E)
 		i_ret = fts_3x07_ctpm_fw_upgrade(client, pbt_buf, fwsize);
 	if (i_ret != 0)
 		dev_notice(&client->dev, "%s() - ERROR:[FTS] upgrade failed..\n",
@@ -2937,7 +2937,7 @@ int fts_ctpm_get_i_file_ver(void)
 		uc_host_fm_ver = CTPM_FW[0x010A];
 		FTS_DBG("[FTS] hxh tp_vendor_id==0x%x\n", uc_host_fm_ver);
 
-	} else if ((vendor_tp_id == 0x3e)) {
+	} else if (vendor_tp_id == 0x3e) {
 		ui_sz = sizeof(TAIGUAN_FW);
 		uc_host_fm_ver = TAIGUAN_FW[0x010A];
 		FTS_DBG("[FTS] hxh tp_vendor_id==0x%x\n", uc_host_fm_ver);
@@ -3110,7 +3110,7 @@ int fts_ctpm_fw_upgrade_with_i_file(struct i2c_client *client)
 			else if ((fts_updateinfo_curr.CHIP_ID == 0x11) || (fts_updateinfo_curr.CHIP_ID == 0x12)
 				|| (fts_updateinfo_curr.CHIP_ID == 0x13) || (fts_updateinfo_curr.CHIP_ID == 0x14))
 				i_ret = fts_5x36_ctpm_fw_upgrade(client, pbt_buf, sizeof(CTPM_FW));
-			else if ((fts_updateinfo_curr.CHIP_ID == 0x06))
+			else if (fts_updateinfo_curr.CHIP_ID == 0x06)
 				i_ret = fts_6x06_ctpm_fw_upgrade(client, pbt_buf, sizeof(CTPM_FW));
 			if (i_ret != 0)
 				dev_notice(&client->dev, "%s:upgrade failed. err.\n", __func__);
@@ -3120,7 +3120,7 @@ int fts_ctpm_fw_upgrade_with_i_file(struct i2c_client *client)
 			dev_notice(&client->dev, "%s:FW format error\n", __func__);
 			return -EBADFD;
 		}
-	} else if ((fts_updateinfo_curr.CHIP_ID == 0x36)) {
+	} else if (fts_updateinfo_curr.CHIP_ID == 0x36) {
 		if (fw_len < 8 || fw_len > 32 * 1024) {
 			dev_notice(&client->dev, "%s:FW length error\n", __func__);
 			return -EIO;
@@ -3129,7 +3129,7 @@ int fts_ctpm_fw_upgrade_with_i_file(struct i2c_client *client)
 		i_ret = fts_6x36_ctpm_fw_upgrade(client, pbt_buf, sizeof(CTPM_FW));
 		if (i_ret != 0)
 			dev_notice(&client->dev, "%s:upgrade failed. err.\n", __func__);
-	} else if ((fts_updateinfo_curr.CHIP_ID == 0x64)) {
+	} else if (fts_updateinfo_curr.CHIP_ID == 0x64) {
 		if (fw_len < 8 || fw_len > 48 * 1024) {
 			dev_notice(&client->dev, "%s:FW length error\n", __func__);
 			return -EIO;
@@ -3138,7 +3138,7 @@ int fts_ctpm_fw_upgrade_with_i_file(struct i2c_client *client)
 		i_ret = fts_6336GU_ctpm_fw_upgrade(client, pbt_buf, sizeof(CTPM_FW));
 		if (i_ret != 0)
 			dev_notice(&client->dev, "%s:upgrade failed. err.\n", __func__);
-	} else if ((fts_updateinfo_curr.CHIP_ID == 0x54)) {
+	} else if (fts_updateinfo_curr.CHIP_ID == 0x54) {
 		if (fw_len < 8 || fw_len > 54 * 1024) {
 			pr_notice("FW length error\n");
 			return -EIO;
@@ -3154,7 +3154,7 @@ int fts_ctpm_fw_upgrade_with_i_file(struct i2c_client *client)
 			fts_ctpm_auto_clb(client);  /*start auto CLB*/
 #endif
 		}
-	} else if ((fts_updateinfo_curr.CHIP_ID == 0x58)) {
+	} else if (fts_updateinfo_curr.CHIP_ID == 0x58) {
 		if (fw_len < 8 || fw_len > 54 * 1024) {
 			pr_notice("FW length error\n");
 			return -EIO;
@@ -3171,7 +3171,7 @@ int fts_ctpm_fw_upgrade_with_i_file(struct i2c_client *client)
 			fts_ctpm_auto_clb(client);  /*start auto CLB*/
 #endif
 		}
-	} else if ((fts_updateinfo_curr.CHIP_ID == 0x59)) {
+	} else if (fts_updateinfo_curr.CHIP_ID == 0x59) {
 		if (fw_len < 8 || fw_len > 54 * 1024) {
 			pr_notice("FW length error\n");
 			return -EIO;
@@ -3188,7 +3188,7 @@ int fts_ctpm_fw_upgrade_with_i_file(struct i2c_client *client)
 			fts_ctpm_auto_clb(client);  /*start auto CLB*/
 #endif
 		}
-	} else if ((fts_updateinfo_curr.CHIP_ID == 0x86)) {
+	} else if (fts_updateinfo_curr.CHIP_ID == 0x86) {
 		/*FW upgrade*/
 		pbt_buf = CTPM_FW;
 		/*call the upgrade function*/
@@ -3208,7 +3208,7 @@ int fts_ctpm_fw_upgrade_with_i_file(struct i2c_client *client)
 			fts_ctpm_auto_clb(client);  /*start auto CLB*/
 #endif
 		}
-	} else if ((fts_updateinfo_curr.CHIP_ID == 0x87)) {
+	} else if (fts_updateinfo_curr.CHIP_ID == 0x87) {
 		/*FW upgrade*/
 		pbt_buf = CTPM_FW;
 		/*call the upgrade function*/
@@ -3228,7 +3228,7 @@ int fts_ctpm_fw_upgrade_with_i_file(struct i2c_client *client)
 			fts_ctpm_auto_clb(client);  /*start auto CLB*/
 #endif
 		}
-	} else if ((fts_updateinfo_curr.CHIP_ID == 0x0E)) {
+	} else if (fts_updateinfo_curr.CHIP_ID == 0x0E) {
 		if (fw_len < 8 || fw_len > 32 * 1024) {
 			dev_notice(&client->dev, "%s:FW length error\n", __func__);
 			return -EIO;
@@ -3252,7 +3252,7 @@ int taiguan_fw_upgrade_with_i_file(struct i2c_client *client)
 	* if illegal, then stop upgrade and return.
 	*/
 
-	if ((fts_updateinfo_curr.CHIP_ID == 0x58)) {
+	if (fts_updateinfo_curr.CHIP_ID == 0x58) {
 		if (fw_len < 8 || fw_len > 54 * 1024) {
 			pr_notice("FW length error\n");
 			return -EIO;
@@ -3444,7 +3444,7 @@ int fts_ctpm_auto_upgrade(struct i2c_client *client)
 		if (uc_tp_vendor_id == 0x7b) {
 			FTS_DBG("--->>hxh pingbo TP upgrade\n");
 			i_ret = fts_ctpm_fw_upgrade_with_i_file(client);
-		} else if ((uc_tp_vendor_id == 0x3e)) {
+		} else if (uc_tp_vendor_id == 0x3e) {
 			FTS_DBG("--->>hxh taiguan TP upgrade\n");
 			i_ret = taiguan_fw_upgrade_with_i_file(client);
 		}

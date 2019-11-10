@@ -363,7 +363,6 @@ config INET_ESP
 	select CRYPTO_SHA512
 	select CRYPTO_DES
 	select CRYPTO_ECHAINIV
-
 	---help---
 	  Support for IPsec ESP.
 
@@ -643,7 +642,7 @@ config TCP_CONG_CDG
 
 choice
 	prompt "Default TCP congestion control"
-	default DEFAULT_CUBIC
+	default DEFAULT_BIC
 	help
 	  Select the TCP congestion control that will be used by default
 	  for all connections.

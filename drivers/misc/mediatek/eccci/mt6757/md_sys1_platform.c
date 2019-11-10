@@ -1128,7 +1128,7 @@ int ccci_modem_suspend(struct platform_device *dev, pm_message_t state)
 {
 	struct ccci_modem *md = (struct ccci_modem *)dev->dev.platform_data;
 
-	CCCI_DEBUG_LOG(md->index, TAG, "ccci_modem_suspend\n");
+	CCCI_NORMAL_LOG(md->index, TAG, "ccci_modem_suspend\n");
 	return 0;
 }
 
@@ -1136,7 +1136,7 @@ int ccci_modem_resume(struct platform_device *dev)
 {
 	struct ccci_modem *md = (struct ccci_modem *)dev->dev.platform_data;
 
-	CCCI_DEBUG_LOG(md->index, TAG, "ccci_modem_resume\n");
+	CCCI_NORMAL_LOG(md->index, TAG, "ccci_modem_resume\n");
 	return 0;
 }
 
@@ -1178,7 +1178,7 @@ void ccci_modem_restore_reg(struct ccci_modem *md)
 	int i;
 	unsigned long flags;
 	unsigned int val = 0;
-	unsigned long long bk_addr = 0;
+	dma_addr_t bk_addr = 0;
 
 	if (md_state == GATED || md_state == WAITING_TO_STOP || md_state == INVALID) {
 		CCCI_NORMAL_LOG(md->index, TAG, "Resume no need reset cldma for md_state=%d\n", md_state);
@@ -1227,9 +1227,9 @@ void ccci_modem_restore_reg(struct ccci_modem *md)
 									CLDMA_AP_TQCPBAK(md_ctrl->txq[i].index));
 				bk_addr |= val;
 				cldma_reg_set_tx_start_addr(md_ctrl->cldma_ap_pdn_base,
-					md_ctrl->txq[i].index, (dma_addr_t)bk_addr);
+					md_ctrl->txq[i].index, bk_addr);
 				cldma_reg_set_tx_start_addr_bk(md_ctrl->cldma_ap_ao_base,
-					md_ctrl->txq[i].index, (dma_addr_t)bk_addr);
+					md_ctrl->txq[i].index, bk_addr);
 			}
 		}
 		/* wait write done*/

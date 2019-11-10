@@ -24,6 +24,8 @@ struct rt5081_pmu_bled_platdata {
 	uint8_t use_pwm:1;
 	uint8_t pwm_fsample:2;
 	uint8_t pwm_deglitch:2;
+	uint8_t pwm_hys_en:1;
+	uint8_t pwm_hys:2;
 	uint8_t pwm_avg_cycle:3;
 	uint8_t bled_ramptime:4;
 	uint8_t bled_flash_ramp:3;
@@ -46,6 +48,8 @@ struct rt5081_pmu_bled_platdata {
 #define RT5081_BLED_PWMSHIFT (7)
 #define RT5081_BLED_PWMDSHFT (5)
 #define RT5081_BLED_PWMFSHFT (3)
+#define RT5081_BLED_PWMHESHFT (2)
+#define RT5081_BLED_PWMHSHFT (0)
 
 /* RT5081_PMU_REG_BLCTRL : 0xA3 */
 #define RT5081_BLED_RAMPTSHFT (4)

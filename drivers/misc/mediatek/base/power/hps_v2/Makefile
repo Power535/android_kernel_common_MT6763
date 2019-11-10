@@ -29,4 +29,4 @@ obj-y += mtk_hps_ops.o
 #obj-y += mach/
 
 # stress module
-# obj-y += mtk_cpuhp_ut.o
+obj-y += mtk_cpuhp_ut.o

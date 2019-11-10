@@ -65,7 +65,7 @@ static DEFINE_SPINLOCK(imgsensor_drv_lock);
 static imgsensor_info_struct imgsensor_info = {
 	.sensor_id = IMX258_SENSOR_ID,	/* record sensor id defined in Kd_imgsensor.h */
 
-	.checksum_value = 0x38ebe79e,	/* checksum value for Camera Auto Test */
+	.checksum_value = 0x75562e7,	/* checksum value for Camera Auto Test */
 
 	.pre = {
 		.pclk = 259200000,	/* record different mode's pclk */
@@ -745,10 +745,6 @@ static kal_uint16 gain2reg(const kal_uint16 gain)
 		if (gain <= IMX258MIPI_sensorGainMapping_mono[i][0])
 			break;
 	}
-
-	if (i >= IMX258MIPI_MaxGainIndex)
-		i = IMX258MIPI_MaxGainIndex - 1;
-
 	if (gain != IMX258MIPI_sensorGainMapping_mono[i][0])
 		LOG_INF("Gain mapping don't correctly:%d %d\n", gain,
 			IMX258MIPI_sensorGainMapping_mono[i][0]);
@@ -1581,7 +1577,7 @@ static void capture_setting(kal_uint16 curretfps, kal_uint8 pdaf_mode)
 
 		} else {
 			write_cmos_sensor(0x3030, 0x00);
-			LOG_INF("0x3030=%d\n", read_cmos_sensor(0x3030));
+			LOG_INF("0x3030=%d", read_cmos_sensor(0x3030));
 			write_cmos_sensor(0x3032, 0x00);
 			LOG_INF("0x3032=%d\n", read_cmos_sensor(0x3032));
 		}
@@ -1689,7 +1685,7 @@ static void capture_setting(kal_uint16 curretfps, kal_uint8 pdaf_mode)
 
 		} else {
 			write_cmos_sensor(0x3030, 0x00);
-			LOG_INF("0x3030=%d\n", read_cmos_sensor(0x3030));
+			LOG_INF("0x3030=%d", read_cmos_sensor(0x3030));
 			write_cmos_sensor(0x3032, 0x00);
 			LOG_INF("0x3032=%d\n", read_cmos_sensor(0x3032));
 		}

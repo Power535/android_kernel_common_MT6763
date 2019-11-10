@@ -1156,7 +1156,6 @@ static int mt_spi_transfer(struct spi_device *spidev, struct spi_message *msg)
 		}
 
 		/* alert if PA > 4GB for mt6757 */
-#ifdef CONFIG_ARCH_DMA_ADDR_T_64BIT
 		if ((xfer->tx_dma >> 32) != 0x0) {
 			SPI_ERR("[Warning] tx_dma:0x%lx > 4GB boundary!!\n", (unsigned long)xfer->tx_dma);
 			SPI_ERR("[Warning] please allocate low-end memory(< 0xffff_ffff) for tx_dma!!\n");
@@ -1167,7 +1166,6 @@ static int mt_spi_transfer(struct spi_device *spidev, struct spi_message *msg)
 			SPI_ERR("[Warning] please allocate low-end memory(< 0xffff_ffff) for rx_dma!!\n");
 			rx_dma_above_4GB = 1;
 		}
-#endif
 		if ((tx_dma_above_4GB == 1) || (rx_dma_above_4GB == 1))
 			goto out;
 	}

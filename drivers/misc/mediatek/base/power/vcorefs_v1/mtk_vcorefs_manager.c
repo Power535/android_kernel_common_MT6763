@@ -66,9 +66,7 @@ static struct vcorefs_profile vcorefs_ctrl = {
 	.init_opp_perf	= 0,
 	.autok_lock	= 0,
 	.kr_req_mask	= 0,
-	/* mask-off KIR_GPU, KIR_PERF, KIR_FBT, LAST_KICKER log */
-	.kr_log_mask	= (1U << LAST_KICKER) | (1U << KIR_GPU) |
-			(1U << KIR_PERF) | (1U << KIR_FBT),
+	.kr_log_mask	= (1U << LAST_KICKER) | (1U << KIR_GPU),/* mask-off KIR_GPU, LAST_KICKER */
 	.fix_hpm_req	= 0,
 };
 

@@ -133,7 +133,8 @@ unsigned long ged_dvfs_get_last_commit_idx(void);
 extern void (*ged_kpi_set_gpu_dvfs_hint_fp)(int t_gpu_target, int boost_accum_gpu);
 
 #ifdef GED_ENABLE_FB_DVFS
-extern int (*ged_kpi_gpu_dvfs_fp)(int t_gpu, int t_gpu_target, unsigned int force_fallback);
+extern int (*ged_kpi_gpu_dvfs_fp)(int t_gpu, int t_gpu_target,
+	int target_fps_margin, unsigned int force_fallback);
 extern void (*ged_kpi_trigger_fb_dvfs_fp)(void);
 extern int (*ged_kpi_check_if_fallback_mode_fp)(void);
 #endif
@@ -141,5 +142,21 @@ extern int (*ged_kpi_check_if_fallback_mode_fp)(void);
 extern void (*mtk_get_gpu_dvfs_cal_freq_fp)(unsigned long *pulGpu_tar_freq, int *pmode);
 
 extern void mtk_gpu_ged_hint(int, int);
+#if (defined(GED_ENABLE_FB_DVFS) && defined(GED_ENABLE_DYNAMIC_DVFS_MARGIN))
+extern void (*mtk_dvfs_margin_value_fp)(int i32MarginValue);
+extern int (*mtk_get_dvfs_margin_value_fp)(void);
+extern int gx_fb_dvfs_margin;
+extern unsigned int dvfs_margin_mode;
+#endif
+
+#ifdef GED_CONFIGURE_LOADING_BASE_DVFS_STEP
+extern void (*mtk_loading_base_dvfs_step_fp)(int i32MarginValue);
+extern int (*mtk_get_loading_base_dvfs_step_fp)(void);
+#endif
+
+#ifdef GED_ENABLE_TIMER_BASED_DVFS_MARGIN
+extern void (*mtk_timer_base_dvfs_margin_fp)(int i32MarginValue);
+extern int (*mtk_get_timer_base_dvfs_margin_fp)(void);
+#endif
 
 #endif

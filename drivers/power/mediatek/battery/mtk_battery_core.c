@@ -1970,7 +1970,7 @@ void fg_bat_plugout_int_handler(void)
 			gauge_dev_dump(gm.gdev, NULL);
 
 		/* TODO debug purpose, remove it!!!!!! */
-		/* aee_kernel_warning("GAUGE", "BAT_PLUGOUT error!\n"); */
+		aee_kernel_warning("GAUGE", "BAT_PLUGOUT error!\n");
 
 		if (gm.plug_miss_count >= 3) {
 			pmic_enable_interrupt(FG_BAT_PLUGOUT_NO, 0, "GM30");
@@ -2303,10 +2303,7 @@ void fg_daemon_send_data(
 		prcv->size,
 		prcv->idx);
 
-		pret->type = prcv->type;
-		pret->total_size = prcv->total_size;
-		pret->size = prcv->size;
-		pret->idx = prcv->idx;
+
 
 
 	switch (prcv->type) {
@@ -2790,11 +2787,13 @@ void bmd_ctrl_cmd_from_user(void *nl_data, struct fgd_nl_msg_t *ret_msg)
 				memcpy(&gm.g_fgd_pid, &msg->fgd_data[0],
 					sizeof(gm.g_fgd_pid));
 				bm_err(
-					"[fr]FG_DAEMON_CMD_SET_DAEMON_PID=%d,kill daemon case, %d\n",
+					"[fr]FG_DAEMON_CMD_SET_DAEMON_PID=%d,kill daemon case, %d init_flag:%d\n",
 					gm.g_fgd_pid,
-					get_ec()->debug_kill_daemontest);
+					get_ec()->debug_kill_daemontest,
+					gm.init_flag);
 				/* kill daemon dod_init 14*/
-				if (get_ec()->debug_kill_daemontest != 1)
+				if (get_ec()->debug_kill_daemontest != 1 &&
+					gm.init_flag == 1)
 					fg_cust_data.dod_init_sel = 14;
 			}
 

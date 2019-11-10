@@ -39,7 +39,7 @@ int conn_md_dmp_deinit(struct conn_md_dmp_msg_log *p_log)
 	int i_ret = -1;
 
 	if (p_log != NULL) {
-		CONN_MD_INFO_FUNC("valid log buffer pointer:0x%08x, free it.\n", p_log);
+		CONN_MD_INFO_FUNC("valid log buffer pointer:%p, free it.\n", p_log);
 		mutex_destroy(&p_log->lock);
 		vfree(p_log);
 		i_ret = 0;
@@ -140,7 +140,7 @@ int conn_md_dmp_out(struct conn_md_dmp_msg_log *p_msg_log, uint32 src_id, uint32
 
 
 	if (p_msg_log == NULL) {
-		CONN_MD_WARN_FUNC("invalid parameter, p_msg_log:0x%08x\n", p_msg_log);
+		CONN_MD_WARN_FUNC("invalid parameter, p_msg_log is NULL\n");
 		return CONN_MD_ERR_INVALID_PARAM;
 	}
 	mutex_lock(&p_msg_log->lock);

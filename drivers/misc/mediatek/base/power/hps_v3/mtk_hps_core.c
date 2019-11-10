@@ -327,7 +327,6 @@ static int _hps_task_main(void *data)
 #ifdef CONFIG_MTK_ACAO_SUPPORT
 	unsigned int cpu, first_cpu, i;
 	unsigned int cpu_onoff = 0;
-	static unsigned int st_cpu_on_off;
 	ktime_t enter_ktime;
 
 	enter_ktime = ktime_get();
@@ -373,6 +372,7 @@ ACAO_HPS_START:
 	aee_rr_rec_hps_cb_footprint(2);
 	aee_rr_rec_hps_cb_fp_times((u64) ktime_to_ms(ktime_get()));
 	/*Debug message dump*/
+	cpu_onoff = 0;
 	for (i = 0 ; i < 8 ; i++) {
 
 		if (i >= setup_max_cpus)
@@ -381,10 +381,8 @@ ACAO_HPS_START:
 		if (cpumask_test_cpu(i, hps_ctxt.online_core))
 			cpu_onoff |= (1<<i);
 	}
-	pr_info("CPU request is 0x%x ==> 0x%x\n", st_cpu_on_off, cpu_onoff);
-	if ((cpu_onoff == st_cpu_on_off) || (cpu_onoff > 0xff))
-		goto ACAO_HPS_END;
-	st_cpu_on_off = cpu_onoff;
+	pr_info("CPU request is 0x%x\n", cpu_onoff);
+
 	if (!cpumask_empty(hps_ctxt.online_core)) {
 		aee_rr_rec_hps_cb_footprint(3);
 		aee_rr_rec_hps_cb_fp_times((u64) ktime_to_ms(ktime_get()));

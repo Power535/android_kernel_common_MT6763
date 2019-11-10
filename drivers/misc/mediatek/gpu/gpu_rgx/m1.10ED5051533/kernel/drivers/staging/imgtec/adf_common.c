@@ -361,7 +361,7 @@ int adf_img_validate_simple(struct adf_device *dev, struct adf_post *cfg,
 	buffer = &cfg->bufs[0];
 	overlay = buffer->overlay_engine;
 	if (!overlay) {
-		dev_err(device, "Buffer without an overlay engine.\n");
+		dev_info(device, "Buffer without an overlay engine.\n");
 		return -EINVAL;
 	}
 
@@ -382,7 +382,7 @@ int adf_img_validate_simple(struct adf_device *dev, struct adf_post *cfg,
 
 	interface = get_interface_attached_to_overlay(dev, overlay);
 	if (!interface) {
-		dev_err(device, "No interface attached to overlay\n");
+		dev_info(device, "No interface attached to overlay\n");
 		return -EINVAL;
 	}
 
@@ -477,38 +477,38 @@ bool adf_img_buffer_sanity_check(const struct adf_interface *intf,
 	int plane;
 
 	if (buf->w == 0) {
-		dev_err(dev, "Buffer sanity failed: Zero width\n");
+		dev_info(dev, "Buffer sanity failed: Zero width\n");
 		return false;
 	}
 	if (buf->h == 0) {
-		dev_err(dev, "Buffer sanity failed: Zero height\n");
+		dev_info(dev, "Buffer sanity failed: Zero height\n");
 		return false;
 	}
 	if (buf->format == 0) {
-		dev_err(dev, "Buffer sanity failed: Zero format\n");
+		dev_info(dev, "Buffer sanity failed: Zero format\n");
 		return false;
 	}
 	if (buf->pitch == 0) {
-		dev_err(dev, "Buffer sanity failed: Zero pitch\n");
+		dev_info(dev, "Buffer sanity failed: Zero pitch\n");
 		return false;
 	}
 	if (buf->n_planes == 0) {
-		dev_err(dev, "Buffer sanity failed: Zero plane count\n");
+		dev_info(dev, "Buffer sanity failed: Zero plane count\n");
 		return false;
 	}
 	if (buf->overlay_engine == NULL) {
-		dev_err(dev, "Buffer sanity failed: NULL assigned overlay\n");
+		dev_info(dev, "Buffer sanity failed: NULL assigned overlay\n");
 		return false;
 	}
 
 	for (plane = 0; plane < buf->n_planes; plane++)	{
 		if (buf->dma_bufs[plane] == NULL) {
-			dev_err(dev, "Buffer sanity failed: NULL dma buf for plane %d\n",
+			dev_info(dev, "Buffer sanity failed: NULL dma buf for plane %d\n",
 				plane);
 			return false;
 		}
 		if (buf->pitch[plane] == 0) {
-			dev_err(dev, "Buffer sanity failed: Zero pitch for plane %d\n",
+			dev_info(dev, "Buffer sanity failed: Zero pitch for plane %d\n",
 				plane);
 			return false;
 		}
@@ -517,7 +517,7 @@ bool adf_img_buffer_sanity_check(const struct adf_interface *intf,
 
 	if (buf_ext->crop.x1 >= buf_ext->crop.x2 ||
 	    buf_ext->crop.y1 >= buf_ext->crop.y2) {
-		dev_err(dev, "Buffer sanity failed: Invalid crop rect (%d,%d)(%d,%d)\n",
+		dev_info(dev, "Buffer sanity failed: Invalid crop rect (%d,%d)(%d,%d)\n",
 			buf_ext->crop.x1, buf_ext->crop.y1,
 			buf_ext->crop.x2, buf_ext->crop.y2);
 		return false;
@@ -527,7 +527,7 @@ bool adf_img_buffer_sanity_check(const struct adf_interface *intf,
 	    buf_ext->crop.x2 > buf->w ||
 	    buf_ext->crop.y1 > buf->h ||
 	    buf_ext->crop.y2 > buf->h) {
-		dev_err(dev, "Buffer sanity failed: Crop rect (%d,%d)(%d,%d) outside of %dx%d source buffer\n",
+		dev_info(dev, "Buffer sanity failed: Crop rect (%d,%d)(%d,%d) outside of %dx%d source buffer\n",
 			buf_ext->crop.x1, buf_ext->crop.y1,
 			buf_ext->crop.x2, buf_ext->crop.y2,
 			buf->w, buf->h);
@@ -536,7 +536,7 @@ bool adf_img_buffer_sanity_check(const struct adf_interface *intf,
 
 	if (buf_ext->display.x1 >= buf_ext->display.x2 ||
 	    buf_ext->display.y1 >= buf_ext->display.y2) {
-		dev_err(dev, "Buffer sanity failed: Invalid display rect (%d,%d)(%d,%d)\n",
+		dev_info(dev, "Buffer sanity failed: Invalid display rect (%d,%d)(%d,%d)\n",
 			buf_ext->display.x1, buf_ext->display.y1,
 			buf_ext->display.x2, buf_ext->display.y2);
 		return false;
@@ -546,7 +546,7 @@ bool adf_img_buffer_sanity_check(const struct adf_interface *intf,
 	    buf_ext->crop.x2 > buf->w ||
 	    buf_ext->crop.y1 > buf->h ||
 	    buf_ext->crop.y2 > buf->h) {
-		dev_err(dev, "Buffer sanity failed: Display rect (%d,%d)(%d,%d) outside of %dx%d current interface mode\n",
+		dev_info(dev, "Buffer sanity failed: Display rect (%d,%d)(%d,%d) outside of %dx%d current interface mode\n",
 			buf_ext->crop.x1, buf_ext->crop.y1,
 			buf_ext->crop.x2, buf_ext->crop.y2,
 			intf->current_mode.hdisplay,
@@ -563,7 +563,7 @@ bool adf_img_buffer_sanity_check(const struct adf_interface *intf,
 	case ADF_BUFFER_TRANSFORM_ROT_270_EXT:
 		break;
 	default:
-		dev_err(dev, "Invalid transform 0x%x\n", buf_ext->transform);
+		dev_info(dev, "Invalid transform 0x%x\n", buf_ext->transform);
 		return false;
 	}
 
@@ -573,7 +573,7 @@ bool adf_img_buffer_sanity_check(const struct adf_interface *intf,
 	case ADF_BUFFER_BLENDING_COVERAGE_EXT:
 		break;
 	default:
-		dev_err(dev, "Invalid blend type 0x%x\n", buf_ext->blend_type);
+		dev_info(dev, "Invalid blend type 0x%x\n", buf_ext->blend_type);
 		return false;
 	}
 	return true;

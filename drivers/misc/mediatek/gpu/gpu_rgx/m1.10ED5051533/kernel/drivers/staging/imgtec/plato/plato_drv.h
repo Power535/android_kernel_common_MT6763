@@ -60,16 +60,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 // Debug output:
 // Sometimes will want to always output info or error even in release mode.
-// In that case use dev_info, dev_err directly.
 #if defined(PLATO_DRM_DEBUG)
 	#define plato_dev_info(dev, fmt, ...)   dev_info(dev, fmt, ##__VA_ARGS__)
-	#define plato_dev_warn(dev, fmt, ...)   dev_warn(dev, fmt, ##__VA_ARGS__)
-	#define plato_dev_error(dev, fmt, ...)  dev_err(dev, fmt, ##__VA_ARGS__)
 	#define PLATO_DRM_CHECKPOINT            pr_info("line %d\n", __LINE__)
 #else
 	#define plato_dev_info(dev, fmt, ...)
-	#define plato_dev_warn(dev, fmt, ...)
-	#define plato_dev_error(dev, fmt, ...)
 	#define PLATO_DRM_CHECKPOINT
 #endif
 

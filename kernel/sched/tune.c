@@ -1158,7 +1158,7 @@ prefer_idle_write(struct cgroup_subsys_state *css, struct cftype *cft,
 	if (idle_prefer_mode && (st->idx == 3 || st->idx == 1))
 		prefer_idle = 1;
 
-	st->prefer_idle = prefer_idle;
+	st->prefer_idle = !!prefer_idle;
 
 	return 0;
 }

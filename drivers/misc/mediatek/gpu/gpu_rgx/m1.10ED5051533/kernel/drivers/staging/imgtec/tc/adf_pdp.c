@@ -575,7 +575,7 @@ static int pdp_mode_id(struct adf_pdp_device *pdp, u32 height, u32 width)
 			return i;
 	}
 
-	dev_err(&pdp->pdev->dev, "Failed to find matching mode for %dx%d\n",
+	dev_info(&pdp->pdev->dev, "Failed to find matching mode for %dx%d\n",
 		width, height);
 
 	return -1;
@@ -646,7 +646,7 @@ static void pdp_enable_interrupt(struct adf_pdp_device *pdp)
 	err = tc_enable_interrupt(pdp->pdev->dev.parent,
 		TC_INTERRUPT_PDP);
 	if (err) {
-		dev_err(&pdp->pdev->dev,
+		dev_info(&pdp->pdev->dev,
 			"tc_enable_interrupt failed (%d)\n", err);
 	}
 }
@@ -658,7 +658,7 @@ static void pdp_disable_interrupt(struct adf_pdp_device *pdp)
 	err = tc_disable_interrupt(pdp->pdev->dev.parent,
 		TC_INTERRUPT_PDP);
 	if (err) {
-		dev_err(&pdp->pdev->dev,
+		dev_info(&pdp->pdev->dev,
 			"tc_disable_interrupt failed (%d)\n", err);
 	}
 }
@@ -718,7 +718,7 @@ static void pdp_post(struct adf_device *adf_dev, struct adf_post *cfg,
 
 	if (wait_event_timeout(pdp->vsync_wait_queue,
 		pdp_vsync_triggered(pdp), timeout) == 0) {
-		dev_err(&pdp->pdev->dev, "Post VSync wait timeout");
+		dev_info(&pdp->pdev->dev, "Post VSync wait timeout");
 		/* Undefined behaviour if this times out */
 	}
 out_update_num_posts:
@@ -825,7 +825,7 @@ static int pdp_modeset(struct adf_interface *intf,
 	const struct pdp_timing_data *tdata = pdp_timing_data(pdp, mode_id);
 
 	if (!tdata) {
-		dev_err(&pdp->pdev->dev, "Failed to find mode for %ux%u\n",
+		dev_info(&pdp->pdev->dev, "Failed to find mode for %ux%u\n",
 			mode->hdisplay, mode->vdisplay);
 		err = -ENXIO;
 		goto err_out;
@@ -897,13 +897,13 @@ static int pdp_alloc_simple_buffer(struct adf_interface *intf, u16 w, u16 h,
 		(1 << pdp->pdata->ion_heap_id), 0);
 	if (IS_ERR(hdl)) {
 		err = PTR_ERR(hdl);
-		dev_err(&pdp->pdev->dev, "ion_alloc failed (%d)\n", err);
+		dev_info(&pdp->pdev->dev, "ion_alloc failed (%d)\n", err);
 		goto err_out;
 	}
 	*dma_buf = ion_share_dma_buf(pdp->ion_client, hdl);
 	if (IS_ERR(*dma_buf)) {
 		err = PTR_ERR(hdl);
-		dev_err(&pdp->pdev->dev,
+		dev_info(&pdp->pdev->dev,
 			"ion_share_dma_buf failed (%d)\n", err);
 		goto err_free_buffer;
 	}
@@ -987,7 +987,7 @@ adf_pdp_release(struct adf_obj *obj, struct inode *inode, struct file *file)
 	 */
 	release_fence = adf_device_post(dev, NULL, 0, NULL, 0, NULL, 0);
 	if (IS_ERR_OR_NULL(release_fence)) {
-		dev_err(dev->dev,
+		dev_info(dev->dev,
 			"Failed to queue null flip command (err=%d).\n",
 			(int)PTR_ERR(release_fence));
 		return;
@@ -1103,7 +1103,7 @@ static int adf_pdp_probe_device(struct platform_device *pdev)
 
 	err = tc_enable(pdp->pdev->dev.parent);
 	if (err) {
-		dev_err(&pdev->dev,
+		dev_info(&pdev->dev,
 			"Failed to enable PDP pci device (%d)\n", err);
 		goto err_out;
 	}
@@ -1115,7 +1115,7 @@ static int adf_pdp_probe_device(struct platform_device *pdev)
 	pdp->ion_client = ion_client_create(pdata->ion_device, "adf_pdp");
 	if (IS_ERR(pdp->ion_client)) {
 		err = PTR_ERR(pdp->ion_client);
-		dev_err(&pdev->dev,
+		dev_info(&pdev->dev,
 			"Failed to create PDP ION client (%d)\n", err);
 		goto err_disable_pci;
 	}
@@ -1126,7 +1126,7 @@ static int adf_pdp_probe_device(struct platform_device *pdev)
 	pdp->regs = devm_ioremap_resource(&pdev->dev, registers);
 	if (IS_ERR(pdp->regs)) {
 		err = PTR_ERR(pdp->regs);
-		dev_err(&pdev->dev, "Failed to map PDP registers (%d)\n", err);
+		dev_info(&pdev->dev, "Failed to map PDP registers (%d)\n", err);
 		goto err_destroy_ion_client;
 	}
 	pdp->regs_size = resource_size(registers);
@@ -1159,7 +1159,7 @@ static int adf_pdp_probe_device(struct platform_device *pdev)
 		    devm_ioremap_resource(&pdev->dev, registers);
 		if (IS_ERR(pdp->pll_regs)) {
 			err = PTR_ERR(pdp->pll_regs);
-			dev_err(&pdev->dev,
+			dev_info(&pdev->dev,
 				"Failed to map PLL registers (%d)\n",
 				err);
 			goto err_destroy_ion_client;
@@ -1199,7 +1199,7 @@ static int adf_pdp_probe_device(struct platform_device *pdev)
 				    resource_size(registers));
 		if (!pdp->pll_regs) {
 			err = -ENOMEM;
-			dev_err(&pdev->dev,
+			dev_info(&pdev->dev,
 				"Failed to map PLL registers (%d)\n",
 				err);
 			goto err_destroy_ion_client;
@@ -1214,7 +1214,7 @@ static int adf_pdp_probe_device(struct platform_device *pdev)
 					resource_size(registers));
 		if (!pdp->odin_core_regs) {
 			err = -ENOMEM;
-			dev_err(&pdev->dev, "Failed to map odin-core registers (%d)\n",
+			dev_info(&pdev->dev, "Failed to map odin-core registers (%d)\n",
 				err);
 			goto err_destroy_ion_client;
 		}
@@ -1230,7 +1230,7 @@ static int adf_pdp_probe_device(struct platform_device *pdev)
 	err = adf_device_init(&pdp->adf_device, &pdp->pdev->dev,
 		&adf_pdp_device_ops, "pdp_device");
 	if (err) {
-		dev_err(&pdev->dev, "Failed to init ADF device (%d)\n", err);
+		dev_info(&pdev->dev, "Failed to init ADF device (%d)\n", err);
 		goto err_destroy_ion_client;
 	}
 
@@ -1238,21 +1238,21 @@ static int adf_pdp_probe_device(struct platform_device *pdev)
 		ADF_INTF_DVI, 0, ADF_INTF_FLAG_PRIMARY, &adf_pdp_interface_ops,
 		"pdp_interface");
 	if (err) {
-		dev_err(&pdev->dev, "Failed to init ADF interface (%d)\n", err);
+		dev_info(&pdev->dev, "Failed to init ADF interface (%d)\n", err);
 		goto err_destroy_adf_device;
 	}
 
 	err = adf_overlay_engine_init(&pdp->adf_overlay, &pdp->adf_device,
 		adf_pdp_overlay_ops, "pdp_overlay");
 	if (err) {
-		dev_err(&pdev->dev, "Failed to init ADF overlay (%d)\n", err);
+		dev_info(&pdev->dev, "Failed to init ADF overlay (%d)\n", err);
 		goto err_destroy_adf_interface;
 	}
 
 	err = adf_attachment_allow(&pdp->adf_device, &pdp->adf_overlay,
 		&pdp->adf_interface);
 	if (err) {
-		dev_err(&pdev->dev, "Failed to attach overlay (%d)\n", err);
+		dev_info(&pdev->dev, "Failed to attach overlay (%d)\n", err);
 		goto err_destroy_adf_overlay;
 	}
 
@@ -1261,7 +1261,7 @@ static int adf_pdp_probe_device(struct platform_device *pdev)
 		* pdp->num_supported_modes, GFP_KERNEL);
 
 	if (!pdp->supported_modes) {
-		dev_err(&pdev->dev, "Failed to allocate supported modeinfo structs\n");
+		dev_info(&pdev->dev, "Failed to allocate supported modeinfo structs\n");
 		err = -ENOMEM;
 		goto err_destroy_adf_overlay;
 	}
@@ -1273,7 +1273,7 @@ static int adf_pdp_probe_device(struct platform_device *pdev)
 		pdp_display_width);
 	if (default_mode_id == -1) {
 		default_mode_id = 0;
-		dev_err(&pdev->dev, "No modeline found for requested display size (%dx%d)\n",
+		dev_info(&pdev->dev, "No modeline found for requested display size (%dx%d)\n",
 			pdp_display_width, pdp_display_height);
 	}
 
@@ -1281,14 +1281,14 @@ static int adf_pdp_probe_device(struct platform_device *pdev)
 	err = pdp_modeset(&pdp->adf_interface,
 		&pdp->supported_modes[default_mode_id]);
 	if (err) {
-		dev_err(&pdev->dev, "Initial modeset failed (%d)\n", err);
+		dev_info(&pdev->dev, "Initial modeset failed (%d)\n", err);
 		goto err_destroy_modelist;
 	}
 
 	err = adf_hotplug_notify_connected(&pdp->adf_interface,
 		pdp->supported_modes, pdp->num_supported_modes);
 	if (err) {
-		dev_err(&pdev->dev, "Initial hotplug notify failed (%d)\n",
+		dev_info(&pdev->dev, "Initial hotplug notify failed (%d)\n",
 			err);
 		goto err_destroy_modelist;
 	}
@@ -1296,7 +1296,7 @@ static int adf_pdp_probe_device(struct platform_device *pdev)
 					   TC_INTERRUPT_PDP,
 					   pdp_irq_handler, pdp);
 	if (err) {
-		dev_err(&pdev->dev, "Failed to set interrupt handler (%d)\n",
+		dev_info(&pdev->dev, "Failed to set interrupt handler (%d)\n",
 			err);
 		goto err_destroy_modelist;
 	}
@@ -1306,7 +1306,7 @@ static int adf_pdp_probe_device(struct platform_device *pdev)
 	atomic_set(&pdp->vsync_state, 0);
 
 	if (debugfs_dma_buf_init("pdp_raw"))
-		dev_err(&pdev->dev, "Failed to create debug fs file for raw access\n");
+		dev_info(&pdev->dev, "Failed to create debug fs file for raw access\n");
 
 	pdp_enable_interrupt(pdp);
 
@@ -1316,7 +1316,7 @@ static int adf_pdp_probe_device(struct platform_device *pdev)
 		pdp_display_height, DRM_FORMAT_BGRA8888,
 		&adf_pdp_fb_ops, "adf_pdp_fb");
 	if (err) {
-		dev_err(&pdev->dev, "Failed to init ADF fbdev (%d)\n", err);
+		dev_info(&pdev->dev, "Failed to init ADF fbdev (%d)\n", err);
 		goto err_destroy_modelist;
 	}
 #endif
@@ -1335,7 +1335,7 @@ err_destroy_ion_client:
 err_disable_pci:
 	pci_disable_device(pci_dev);
 err_out:
-	dev_err(&pdev->dev, "Failed to initialise PDP device\n");
+	dev_info(&pdev->dev, "Failed to initialise PDP device\n");
 	return err;
 }
 

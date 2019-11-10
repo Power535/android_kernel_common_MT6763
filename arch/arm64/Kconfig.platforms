@@ -260,6 +260,7 @@ config MACH_MT6771
 	select ARM_AMBA
 	select CPU_V7
 	select HAVE_SMP
+	select HIE
 	select NEED_MACH_MEMORY_H
 	select IRQ_DOMAIN
 	select IRQ_DOMAIN_DEBUG
@@ -287,7 +288,8 @@ config MACH_MT6771
 	select FAST_CIRQ_CLONE_FLUSH
 	select MTK_CACHE_FLUSH_BY_SF
 	select MTK_PID_MAP
-	select MTK_DYNAMIC_LOAD_STORE_BYPASS_WA
+	select MTK_AVB20_SUPPORT
+	select OVERLAY_FS
 	help
 	  This enables support for MediaTek MT6771
 	  Support for aarch64 Architecture

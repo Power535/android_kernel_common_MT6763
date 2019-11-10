@@ -14,10 +14,6 @@
 #ifndef __DRAMC_H__
 #define __DRAMC_H__
 
-#if defined(CONFIG_MTK_ENG_BUILD)
-#define DRAMC_MEMTEST_DEBUG_SUPPORT
-#endif
-
 /* Registers define */
 #define PDEF_DRAMC0_CHA_REG_0E4	IOMEM((DRAMC_AO_CHA_BASE_ADDR + 0x00e4))
 #define PDEF_DRAMC0_CHA_REG_010	IOMEM((DRAMC_AO_CHA_BASE_ADDR + 0x0010))
@@ -84,17 +80,6 @@ typedef enum {
 	TX_FAIL_DATA_RATE,
 	TX_FAIL_VARIATION
 } tx_result;
-#endif
-
-#ifdef DRAMC_MEMTEST_DEBUG_SUPPORT
-unsigned int read_dram_mode_reg_by_rank(
-		unsigned int mr_index, unsigned int *mr_value,
-		unsigned int rank, unsigned int channel);
-unsigned int mt_dramc_chn_get(unsigned int emi_cona);
-unsigned int mt_dramc_chp_get(unsigned int emi_cona);
-phys_addr_t mt_dramc_rankbase_get(unsigned int rank);
-unsigned int mt_dramc_ta_support_ranks(void);
-phys_addr_t mt_dramc_ta_reserve_addr(unsigned int rank);
 #endif
 
 #define LAST_DRAMC
@@ -227,7 +212,6 @@ unsigned char segment_rank1);
 int exit_pasr_dpd_config(void);
 void del_zqcs_timer(void);
 void add_zqcs_timer(void);
-unsigned int get_dram_type(void);
 
 enum DDRTYPE {
 	TYPE_LPDDR3 = 1,

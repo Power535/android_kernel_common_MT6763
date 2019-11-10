@@ -284,6 +284,7 @@ static void disable_fg(void)
 	pmic_enable_interrupt(FG_RG_INT_EN_BAT2_L, 0, "GM30");
 	gm.disableGM30 = 1;
 	gm.ui_soc = 50;
+	battery_main.BAT_CAPACITY = 50;
 }
 
 bool fg_interrupt_check(void)
@@ -1239,7 +1240,7 @@ int force_get_tbat_internal(bool update)
 					pre_fg_r_value,
 					pre_bat_temperature_val2);
 				/*pmic_auxadc_debug(1);*/
-				WARN_ON(1);
+				WARN_ON_ONCE(1);
 			}
 
 			pre_bat_temperature_volt_temp =
@@ -1361,7 +1362,11 @@ static void nl_send_to_user(u32 pid, int seq, struct fgd_nl_msg_t *reply_msg)
 
 	reply_msg->identity = FGD_NL_MAGIC;
 
+	if (in_interrupt())
 	skb = alloc_skb(len, GFP_ATOMIC);
+	else
+		skb = alloc_skb(len, GFP_KERNEL);
+
 	if (!skb)
 		return;
 
@@ -1400,6 +1405,12 @@ static void nl_data_handler(struct sk_buff *skb)
 
 	fgd_msg = (struct fgd_nl_msg_t *)data;
 
+	if (IS_ENABLED(CONFIG_POWER_EXT) || gm.disable_mtkbattery ||
+		IS_ENABLED(CONFIG_MTK_DISABLE_GAUGE)) {
+		bm_err("GM3 disable, nl handler rev data\n");
+		return;
+	}
+
 	if (fgd_msg->identity != FGD_NL_MAGIC) {
 		bm_err("[FGERR]not correct MTKFG netlink packet!%d\n",
 			fgd_msg->identity);
@@ -1418,16 +1429,29 @@ static void nl_data_handler(struct sk_buff *skb)
 
 	size = fgd_msg->fgd_ret_data_len + FGD_NL_MSG_T_HDR_LEN;
 
-	fgd_ret_msg = vmalloc(size);
-	if (!fgd_ret_msg)
-		return;
+	if (size > (PAGE_SIZE << 1))
+		fgd_ret_msg = vmalloc(size);
+	else {
+		if (in_interrupt())
+			fgd_ret_msg = kmalloc(size, GFP_ATOMIC);
+	else
+		fgd_ret_msg = kmalloc(size, GFP_KERNEL);
+	}
+
+	if (fgd_ret_msg == NULL) {
+		if (size > PAGE_SIZE)
+			fgd_ret_msg = vmalloc(size);
+
+		if (fgd_ret_msg == NULL)
+			return;
+	}
 
 	memset(fgd_ret_msg, 0, size);
 
 	bmd_ctrl_cmd_from_user(data, fgd_ret_msg);
 	nl_send_to_user(pid, seq, fgd_ret_msg);
 
-	vfree(fgd_ret_msg);
+	kvfree(fgd_ret_msg);
 }
 
 int wakeup_fg_algo(unsigned int flow_state)
@@ -1450,10 +1474,21 @@ int wakeup_fg_algo(unsigned int flow_state)
 		struct fgd_nl_msg_t *fgd_msg;
 		int size = FGD_NL_MSG_T_HDR_LEN + sizeof(flow_state);
 
-		fgd_msg = vmalloc(size);
-		if (!fgd_msg) {
-/* bm_err("Error: wakeup_fg_algo() vmalloc fail!!!\n"); */
-			return -1;
+		if (size > (PAGE_SIZE << 1))
+			fgd_msg = vmalloc(size);
+		else {
+			if (in_interrupt())
+				fgd_msg = kmalloc(size, GFP_ATOMIC);
+		else
+			fgd_msg = kmalloc(size, GFP_KERNEL);
+		}
+
+		if (fgd_msg == NULL) {
+			if (size > PAGE_SIZE)
+				fgd_msg = vmalloc(size);
+
+			if (fgd_msg == NULL)
+				return -1;
 		}
 
 		bm_debug("[%s] malloc size=%d pid=%d cmd:%d\n",
@@ -1464,7 +1499,9 @@ int wakeup_fg_algo(unsigned int flow_state)
 		memcpy(fgd_msg->fgd_data, &flow_state, sizeof(flow_state));
 		fgd_msg->fgd_data_len += sizeof(flow_state);
 		nl_send_to_user(gm.g_fgd_pid, 0, fgd_msg);
-		vfree(fgd_msg);
+
+		kvfree(fgd_msg);
+
 		return 0;
 	} else {
 		return -1;
@@ -1491,10 +1528,22 @@ int wakeup_fg_algo_cmd(unsigned int flow_state, int cmd, int para1)
 		struct fgd_nl_msg_t *fgd_msg;
 		int size = FGD_NL_MSG_T_HDR_LEN + sizeof(flow_state);
 
+		if (size > (PAGE_SIZE << 1))
 		fgd_msg = vmalloc(size);
-		if (!fgd_msg) {
-/* bm_err("Error: wakeup_fg_algo() vmalloc fail!!!\n"); */
-			return -1;
+		else {
+			if (in_interrupt())
+				fgd_msg = kmalloc(size, GFP_ATOMIC);
+		else
+			fgd_msg = kmalloc(size, GFP_KERNEL);
+
+		}
+
+		if (fgd_msg == NULL) {
+			if (size > PAGE_SIZE)
+				fgd_msg = vmalloc(size);
+
+			if (fgd_msg == NULL)
+				return -1;
 		}
 
 		bm_debug(
@@ -1507,7 +1556,9 @@ int wakeup_fg_algo_cmd(unsigned int flow_state, int cmd, int para1)
 		memcpy(fgd_msg->fgd_data, &flow_state, sizeof(flow_state));
 		fgd_msg->fgd_data_len += sizeof(flow_state);
 		nl_send_to_user(gm.g_fgd_pid, 0, fgd_msg);
-		vfree(fgd_msg);
+
+		kvfree(fgd_msg);
+
 		return 0;
 	} else {
 		return -1;
@@ -1534,7 +1585,11 @@ int wakeup_fg_algo_atomic(unsigned int flow_state)
 		struct fgd_nl_msg_t *fgd_msg;
 		int size = FGD_NL_MSG_T_HDR_LEN + sizeof(flow_state);
 
+		if (in_interrupt())
 		fgd_msg = kmalloc(size, GFP_ATOMIC);
+		else
+			fgd_msg = kmalloc(size, GFP_KERNEL);
+
 		if (!fgd_msg) {
 /* bm_err("Error: wakeup_fg_algo() vmalloc fail!!!\n"); */
 			return -1;
@@ -2938,7 +2993,7 @@ struct device *dev, struct device_attribute *attr,
 	int ret_value = 8888;
 
 	ret_value = battery_get_bat_avg_current();
-	bm_err("[EM] FG_Battery_CurrentConsumption : %d mA\n", ret_value);
+	bm_err("[EM] FG_Battery_CurrentConsumption : %d .1mA\n", ret_value);
 	return sprintf(buf, "%d\n", ret_value);
 }
 
@@ -3078,6 +3133,8 @@ signed int battery_meter_meta_tool_cali_car_tune(int meta_current)
 static long compat_adc_cali_ioctl(
 struct file *filp, unsigned int cmd, unsigned long arg)
 {
+	int adc_out_datas[2] = { 1, 1 };
+
 	bm_notice("%s 32bit IOCTL, cmd=0x%08x\n",
 		__func__, cmd);
 	if (!filp->f_op || !filp->f_op->unlocked_ioctl) {
@@ -3085,6 +3142,9 @@ struct file *filp, unsigned int cmd, unsigned long arg)
 			__func__);
 		return -ENOTTY;
 	}
+
+	if (sizeof(arg) != sizeof(adc_out_datas))
+		return -EFAULT;
 
 	switch (cmd) {
 	case BAT_STATUS_READ:
@@ -3105,8 +3165,8 @@ struct file *filp, unsigned int cmd, unsigned long arg)
 	}
 		break;
 	default:
-		bm_err("%s unknown IOCTL: 0x%08x\n",
-			__func__, cmd);
+		bm_err("%s unknown IOCTL: 0x%08x, %d\n",
+			__func__, cmd, adc_out_datas[0]);
 		break;
 	}
 
@@ -3127,6 +3187,9 @@ static long adc_cali_ioctl(
 	int isdisNAFG = 0;
 
 	bm_notice("%s enter\n", __func__);
+
+	if (sizeof(arg) != sizeof(adc_out_data))
+		return -EFAULT;
 
 	mutex_lock(&gm.fg_mutex);
 
@@ -3283,14 +3346,25 @@ static long adc_cali_ioctl(
 		user_data_addr = (int *)arg;
 		ret = copy_from_user(adc_in_data, user_data_addr, 8);
 		adc_out_data[0] = battery_get_bat_voltage();
-		ret = copy_to_user(user_data_addr, adc_out_data, 8);
+		if (copy_to_user(user_data_addr, adc_out_data,
+			sizeof(adc_out_data))) {
+			mutex_unlock(&gm.fg_mutex);
+			return -EFAULT;
+		}
+
 		bm_notice("**** unlocked_ioctl :Get_META_BAT_VOL Done!\n");
 		break;
 	case Get_META_BAT_SOC:
 		user_data_addr = (int *)arg;
 		ret = copy_from_user(adc_in_data, user_data_addr, 8);
 		adc_out_data[0] = battery_get_uisoc();
-		ret = copy_to_user(user_data_addr, adc_out_data, 8);
+
+		if (copy_to_user(user_data_addr, adc_out_data,
+			sizeof(adc_out_data))) {
+			mutex_unlock(&gm.fg_mutex);
+			return -EFAULT;
+		}
+
 		bm_notice("**** unlocked_ioctl :Get_META_BAT_SOC Done!\n");
 		break;
 
@@ -3299,7 +3373,13 @@ static long adc_cali_ioctl(
 		ret = copy_from_user(adc_in_data, user_data_addr, 8);
 		adc_out_data[0] = fg_cust_data.car_tune_value;
 		bm_err("Get_BAT_CAR_TUNE_VALUE, res=%d\n", adc_out_data[0]);
-		ret = copy_to_user(user_data_addr, adc_out_data, 8);
+
+		if (copy_to_user(user_data_addr, adc_out_data,
+			sizeof(adc_out_data))) {
+			mutex_unlock(&gm.fg_mutex);
+			return -EFAULT;
+		}
+
 		bm_notice("**** unlocked_ioctl :Get_META_BAT_CAR_TUNE_VALUE Done!\n");
 		break;
 
@@ -3320,7 +3400,14 @@ static long adc_cali_ioctl(
 			temp_car_tune);
 
 		adc_out_data[0] = temp_car_tune;
-		ret = copy_to_user(user_data_addr, adc_out_data, 8);
+
+		if (copy_to_user(user_data_addr, adc_out_data,
+			sizeof(adc_out_data))) {
+			mutex_unlock(&gm.fg_mutex);
+			return -EFAULT;
+		}
+
+
 		bm_err("**** unlocked_ioctl Set_BAT_CAR_TUNE_VALUE[%d], result=%d, ret=%d\n",
 			adc_in_data[1], adc_out_data[0], ret);
 
@@ -3360,7 +3447,8 @@ static long adc_cali_ioctl(
 	default:
 		bm_err("**** unlocked_ioctl unknown IOCTL: 0x%08x\n", cmd);
 		g_ADC_Cali = false;
-		break;
+		mutex_unlock(&gm.fg_mutex);
+		return -EINVAL;
 	}
 
 	mutex_unlock(&gm.fg_mutex);

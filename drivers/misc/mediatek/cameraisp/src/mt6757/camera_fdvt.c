@@ -282,8 +282,6 @@ static struct fdvt_device *fdvt_devs;
 static int nr_fdvt_devs;
 #endif
 
-bool haveConfig;
-
 void FDVT_basic_config(void)
 {
 	FDVT_WR32(0x00000111, FDVT_ENABLE);
@@ -637,19 +635,14 @@ static int FDVT_SetRegHW(FDVTRegIO *a_pstCfg)
 	/* LOG_DBG("Count = %d\n", pREGIO->u4Count); */
 
 	for (i = 0; i < pREGIO->u4Count; i++) {
-		if (((FDVT_ADDR + pFDVTWriteBuffer.u4Addr[i]) >= FDVT_ENABLE) &&
-			((pFDVTWriteBuffer.u4Addr[i]) <= FDVT_MAX_OFFSET) &&
-			((pFDVTWriteBuffer.u4Addr[i] & 0x3) == 0)) {
-			/* LOG_DBG("Write: FDVT[0x%03lx](0x%08lx) = 0x%08lx\n", */
-			/* (unsigned long)pFDVTWriteBuffer.u4Addr[i], */
-			/* (unsigned long)(FDVT_ADDR + pFDVTWriteBuffer.u4Addr[i]), */
-			/* (unsigned long)pFDVTWriteBuffer.u4Data[i]); */
+		if ((FDVT_ADDR + pFDVTWriteBuffer.u4Addr[i]) >= FDVT_ADDR &&
+			(FDVT_ADDR + pFDVTWriteBuffer.u4Addr[i]) <= (FDVT_ADDR + FDVT_MAX_OFFSET)) {
+			/* LOG_DBG("Write: FDVT[0x%03x](0x%08x) = 0x%08x\n", pFDVTWriteBuffer.u4Addr[i],*/
+			/*FDVT_ADDR + pFDVTWriteBuffer.u4Addr[i], pFDVTWriteBuffer.u4Data[i]); */
 			FDVT_WR32(pFDVTWriteBuffer.u4Data[i], FDVT_ADDR + pFDVTWriteBuffer.u4Addr[i]);
 		} else {
-			LOG_ERR("Error: Writing Memory(0x%lx) Excess FDVT Range!  FD Offset: 0x%lx, FD Base: 0x%lx\n",
-			(unsigned long)(FDVT_ADDR + pFDVTReadBuffer.u4Addr[i]),
-			(unsigned long)pFDVTReadBuffer.u4Addr[i],
-			(unsigned long)FDVT_ADDR);
+			/* LOG_DBG("Error: Writing Memory(0x%8x) Excess FDVT Range!  FD Offset: 0x%x\n",*/
+			/*FDVT_ADDR + pFDVTWriteBuffer.u4Addr[i], pFDVTWriteBuffer.u4Addr[i]);*/
 		}
 	}
 
@@ -662,20 +655,14 @@ static int FDVT_SetRegHW(FDVTRegIO *a_pstCfg)
 static int FDVT_ReadRegHW(FDVTRegIO *a_pstCfg)
 {
 	int ret = 0;
-	int size = 0;
-	int i = 0;
+	int size = a_pstCfg->u4Count * 4;
+	int i;
 
-	if (a_pstCfg == NULL) {
-		LOG_DBG("Null input argrment\n");
-		return -EINVAL;
+	if (size > buf_size) {
+		LOG_DBG("size too big\n");
+		ret = -EFAULT;
+		goto mt_FDVT_read_reg_exit;
 	}
-
-	if (a_pstCfg->u4Count > FDVT_DRAM_REGCNT) {
-		LOG_DBG("Buffer Size Exceeded!\n");
-		return -EFAULT;
-	}
-
-	size = a_pstCfg->u4Count * 4;
 
 	if (copy_from_user(pFDVTReadBuffer.u4Addr,  a_pstCfg->pAddr, size) != 0) {
 		LOG_DBG("copy_from_user failed\n");
@@ -684,17 +671,14 @@ static int FDVT_ReadRegHW(FDVTRegIO *a_pstCfg)
 	}
 
 	for (i = 0; i < a_pstCfg->u4Count; i++) {
-		if (((FDVT_ADDR + pFDVTReadBuffer.u4Addr[i]) >= FDVT_ADDR) &&
-			((pFDVTReadBuffer.u4Addr[i]) <= FDVT_MAX_OFFSET) &&
-			((pFDVTWriteBuffer.u4Addr[i] & 0x3) == 0)) {
+		if ((FDVT_ADDR + pFDVTReadBuffer.u4Addr[i]) >= FDVT_ADDR &&
+			(FDVT_ADDR + pFDVTReadBuffer.u4Addr[i]) <= (FDVT_ADDR + FDVT_MAX_OFFSET)) {
 			pFDVTReadBuffer.u4Data[i] = ioread32((void *)(FDVT_ADDR + pFDVTReadBuffer.u4Addr[i]));
 			/*LOG_DBG("Read  addr/val: 0x%08x/0x%08x\n", (u32) (FDVT_ADDR + pFDVTReadBuffer.u4Addr[i]),*/
 			/*(u32) pFDVTReadBuffer.u4Data[i]);*/
 		} else {
-			LOG_ERR("Error: Reading Memory(0x%lx) Excess FDVT Range!  FD Offset: 0x%lx, FD Base: 0x%lx\n",
-			(unsigned long)(FDVT_ADDR + pFDVTReadBuffer.u4Addr[i]),
-			(unsigned long)pFDVTReadBuffer.u4Addr[i],
-			(unsigned long)FDVT_ADDR);
+			/*LOG_DBG("Error: Reading Memory(0x%8x) Excess FDVT Range!  FD Offset: 0x%x\n",*/
+			/*FDVT_ADDR + pFDVTReadBuffer.u4Addr[i], pFDVTReadBuffer.u4Addr[i]);*/
 			ret = -EFAULT;
 			goto mt_FDVT_read_reg_exit;
 		}
@@ -731,12 +715,6 @@ static int FDVT_WaitIRQ(u32 *u4IRQMask)
 
 	*u4IRQMask = g_FDVTIRQ;
 	/*LOG_DBG("[FDVT] IRQ : 0x%8x\n",g_FDVTIRQ);*/
-
-	/* check if user is interrupted by system signal */
-	if (timeout != 0 && !(g_FDVTIRQMSK & g_FDVTIRQ)) {
-		LOG_ERR("interrupted by system signal,return value(%d)\n", timeout);
-		return -ERESTARTSYS; /* actually it should be -ERESTARTSYS */
-	}
 
 	if (!(g_FDVTIRQMSK & g_FDVTIRQ)) {
 		LOG_DBG("wait_event_interruptible Not FDVT, %d, %d\n", g_FDVTIRQMSK, g_FDVTIRQ);
@@ -785,18 +763,14 @@ static long FDVT_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	switch (cmd) {
 	case FDVT_IOC_INIT_SETPARA_CMD:
 		LOG_DBG("[FDVT] FDVT_INIT_CMD\n");
-		haveConfig = 0;
 		FDVT_basic_config();
 		break;
 	case FDVT_IOC_STARTFD_CMD:
 		/* LOG_DBG("[FDVT] FDVTIOC_STARTFD_CMD\n"); */
-		if (haveConfig) {
-			FDVT_WR32(0x00000001, FDVT_INT_EN);
-			FDVT_WR32(0x00000000, FDVT_START);
-			FDVT_WR32(0x00000001, FDVT_START);
-			FDVT_WR32(0x00000000, FDVT_START);
-			haveConfig = 0;
-		}
+		FDVT_WR32(0x00000001, FDVT_INT_EN);
+		FDVT_WR32(0x00000000, FDVT_START);
+		FDVT_WR32(0x00000001, FDVT_START);
+		FDVT_WR32(0x00000000, FDVT_START);
 		/* FDVT_DUMPREG(); */
 		break;
 	case FDVT_IOC_G_WAITIRQ:
@@ -808,13 +782,11 @@ static long FDVT_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		/* LOG_DBG("[FDVT] FDVT set FD config\n"); */
 		FaceDetecteConfig();  /* LDVT Disable, Due to the different feature number between FD/SD/BD/REC */
 		FDVT_SetRegHW((FDVTRegIO *)pBuff);
-		haveConfig = 1;
 		break;
 	case FDVT_IOC_T_SET_SDCONF_CMD:
 		/* LOG_DBG("[FDVT] FDVT set SD config\n"); */
 		SmileDetecteConfig();
 		FDVT_SetRegHW((FDVTRegIO *)pBuff);
-		haveConfig = 1;
 		break;
 	case FDVT_IOC_G_READ_FDREG_CMD:
 		/* LOG_DBG("[FDVT] FDVT read FD config\n"); */

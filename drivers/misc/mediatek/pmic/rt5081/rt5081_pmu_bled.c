@@ -33,7 +33,7 @@ struct rt5081_pmu_bled_data {
 static uint8_t bled_init_data[] = {
 	0x42, /* RT5081_PMU_REG_BLEN */
 	0x89, /* RT5081_PMU_REG_BLBSTCTRL */
-	0x04, /* RT5081_PMU_REG_BLPWM */
+	0x00, /* RT5081_PMU_REG_BLPWM */
 	0x00, /* RT5081_PMU_REG_BLCTRL */
 	0x00, /* RT5081_PMU_REG_BLDIM2 */
 	0x00, /* RT5081_PMU_REG_BLDIM1 */
@@ -435,6 +435,14 @@ static inline int rt_parse_dt(struct device *dev)
 		pdata->pwm_deglitch = 0x1;
 	else
 		pdata->pwm_deglitch = tmp;
+	if (of_property_read_u32(np, "rt,pwm_hys_en", &tmp) < 0)
+		pdata->pwm_hys_en = 0x1;
+	else
+		pdata->pwm_hys_en = tmp;
+	if (of_property_read_u32(np, "rt,pwm_hys", &tmp) < 0)
+		pdata->pwm_hys = 0x0;	/* 1 bit */
+	else
+		pdata->pwm_hys = tmp;
 	if (of_property_read_u32(np, "rt,pwm_avg_cycle", &tmp) < 0)
 		pdata->pwm_avg_cycle = 0;
 	else
@@ -451,8 +459,7 @@ static inline int rt_parse_dt(struct device *dev)
 		pdata->max_bled_brightness = 1024;
 	else
 		pdata->max_bled_brightness = tmp;
-	if (of_property_read_string(np, "rt,bled_name", &(pdata->bled_name)) < 0)
-		pdata->bled_name = "rt5081_pmu_bled";
+	of_property_read_string(np, "rt,bled_name", &(pdata->bled_name));
 	return 0;
 }
 

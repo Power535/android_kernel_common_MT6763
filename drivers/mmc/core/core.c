@@ -639,6 +639,7 @@ void mmc_wait_cmdq_done(struct mmc_request *mrq)
 	struct mmc_host *host = mrq->host;
 	struct mmc_command *cmd = mrq->cmd;
 	int done = 0, task_id;
+	static unsigned long not_ready_time;
 
 	if (cmd->opcode == MMC_SEND_STATUS ||
 		cmd->opcode == MMC_STOP_TRANSMISSION ||
@@ -685,8 +686,23 @@ void mmc_wait_cmdq_done(struct mmc_request *mrq)
 		int i = 0;
 		unsigned int resp = cmd->resp[0];
 
-		if (resp == 0)
+		if (resp == 0) {
+			if (!not_ready_time)
+				not_ready_time = jiffies;
+			else if (time_after(jiffies, not_ready_time
+				+ msecs_to_jiffies(30 * 1000))) {
+				/* no task ready for over 30 sec */
+				pr_notice("mmc0: error: task not ready over 30s\n");
+				msleep(2000);
+
+				/* reset device */
+				mmc_reset_cq(host);
+				not_ready_time = 0;
+			}
 			goto request_end;
+		}
+
+		not_ready_time = 0;
 
 		do {
 			if ((resp & 1) && (!host->data_mrq_queued[i])) {
@@ -1789,6 +1805,43 @@ int __mmc_claim_host(struct mmc_host *host, atomic_t *abort)
 EXPORT_SYMBOL(__mmc_claim_host);
 
 /**
+ *     mmc_try_claim_host - try exclusively to claim a host
+ *        and keep trying for given time, with a gap of 10ms
+ *     @host: mmc host to claim
+ *     @dealy_ms: delay in ms
+ *
+ *     Returns %1 if the host is claimed, %0 otherwise.
+ */
+int mmc_try_claim_host(struct mmc_host *host, unsigned int delay_ms)
+{
+	int claimed_host = 0;
+	unsigned long flags;
+	int retry_cnt = delay_ms/10;
+	bool pm = false;
+
+	do {
+		spin_lock_irqsave(&host->lock, flags);
+		if (!host->claimed || host->claimer == current) {
+			host->claimed = 1;
+			host->claimer = current;
+			host->claim_cnt += 1;
+			claimed_host = 1;
+			if (host->claim_cnt == 1)
+				pm = true;
+		}
+		spin_unlock_irqrestore(&host->lock, flags);
+		if (!claimed_host)
+			mmc_delay(10);
+	} while (!claimed_host && retry_cnt--);
+
+	if (pm)
+		pm_runtime_get_sync(mmc_dev(host));
+
+	return claimed_host;
+}
+EXPORT_SYMBOL(mmc_try_claim_host);
+
+/**
  *	mmc_release_host - release a host
  *	@host: mmc host to release
  *
@@ -1851,7 +1904,7 @@ static inline void mmc_set_ios(struct mmc_host *host)
 		"width %u timing %u\n",
 		 mmc_hostname(host), ios->clock, ios->bus_mode,
 		 ios->power_mode, ios->chip_select, ios->vdd,
-		 ios->bus_width, ios->timing);
+		 1 << ios->bus_width, ios->timing);
 
 	host->ops->set_ios(host, ios);
 }
@@ -2032,8 +2085,12 @@ int mmc_of_parse_voltage(struct device_node *np, u32 *mask)
 
 	voltage_ranges = of_get_property(np, "voltage-ranges", &num_ranges);
 	num_ranges = num_ranges / sizeof(*voltage_ranges) / 2;
-	if (!voltage_ranges || !num_ranges) {
-		pr_info("%s: voltage-ranges unspecified\n", np->full_name);
+	if (!voltage_ranges) {
+		pr_debug("%s: voltage-ranges unspecified\n", np->full_name);
+		return -EINVAL;
+	}
+	if (!num_ranges) {
+		pr_err("%s: voltage-ranges empty\n", np->full_name);
 		return -EINVAL;
 	}
 

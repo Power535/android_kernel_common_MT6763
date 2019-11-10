@@ -61,11 +61,7 @@ static struct gpio_item gpio_mapping_table[] = {
 
 static int get_md_gpio_val(unsigned int num)
 {
-#ifdef CONFIG_PINCTRL_MTK_COMMON
-	return __gpio_get_value(num);
-#else
-	return -1;
-#endif
+	return gpio_get_value(num);
 }
 
 static int get_md_adc_val(unsigned int num)
@@ -775,8 +771,12 @@ static void ccci_rpc_work_helper(struct port_t *port, struct rpc_pkt *pkt,
 				if (node) {
 					ret = of_property_read_u32_array(node, "mediatek,clkbuf-config", vals,
 						CLKBUF_MAX_COUNT);
+
 					if (ret)
-						CCCI_ERROR_LOG(md_id, RPC, "%s get property fail\n", __func__);
+						CCCI_ERROR_LOG(md_id, RPC,
+							"%s get property fail\n",
+							__func__);
+
 				} else {
 					CCCI_ERROR_LOG(md_id, RPC, "%s can't find compatible node\n", __func__);
 				}

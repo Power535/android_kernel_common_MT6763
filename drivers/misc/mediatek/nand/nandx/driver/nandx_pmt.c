@@ -41,7 +41,7 @@ static int nandx_read_pmt_table(struct nandx_chip_info *info,
 	u32 temp;
 
 	ret = nandx_core_read(ops, 1, MODE_SLC);
-	if (ret < 0)
+	if ((ret < 0) && (ret != -ENANDFLIPS))
 		return ret;
 
 	if (!is_valid_pt(buf) && !is_valid_mpt(buf))

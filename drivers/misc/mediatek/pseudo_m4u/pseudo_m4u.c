@@ -1134,7 +1134,7 @@ int __m4u_get_user_pages(int eModuleID, struct task_struct *tsk, struct mm_struc
 				return i ? i : -ERESTARTSYS;
 
 			ret = get_user_pages_durable(current, current->mm, start, 1,
-				(vma->vm_flags & VM_WRITE), 0, &page, NULL);
+				gup_flags, &page, NULL);
 			if (ret == 1)
 				pages[i] = page;
 
@@ -1182,7 +1182,7 @@ int __m4u_get_user_pages(int eModuleID, struct task_struct *tsk, struct mm_struc
 					foll_flags &= ~FOLL_WRITE;
 
 				ret = get_user_pages_durable(current, current->mm, start, 1,
-					(vma->vm_flags & VM_WRITE), 0, &page, NULL);
+					foll_flags, &page, NULL);
 				if (ret == 1)
 					pages[i] = page;
 			}
@@ -1642,7 +1642,7 @@ struct page *m4u_cache_get_page(unsigned long va)
 
 	start = va & (~M4U_PAGE_MASK);
 	pa = m4u_user_v2p(start);
-	if ((pa == 0)) {
+	if (pa == 0) {
 		M4UMSG("error m4u_get_phys user_v2p return 0 on va=0x%lx\n", start);
 		return NULL;
 	}

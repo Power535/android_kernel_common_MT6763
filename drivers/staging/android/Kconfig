@@ -90,7 +90,6 @@ config MTK_GMO_RAM_OPTIMIZE
 	default n
 	select MTK_ENABLE_GMO
 	select MTK_ENABLE_AGO
-	select DM_ANDROID_VERITY_AT_MOST_ONCE_DEFAULT_ENABLED
 	help
 	  Provide for phone to use memory efficiently.
 
@@ -98,7 +97,7 @@ config MTK_ENABLE_GMO
 	bool "Enable/Disable GMO related feautre"
 	default n
 	select CC_OPTIMIZE_FOR_SIZE
-	select ZRAM_LZ4K_COMPRESS
+	select CRYPTO_LZ4K
 	---help---
 	Enable/Disable GMO related feautre
 	Do not use this options in Kernel directly
@@ -110,7 +109,7 @@ config MTK_ENABLE_AGO
 	default n
 	select SWAP
 	select ZRAM
-	select ZRAM_LZ4_COMPRESS
+	select CRYPTO_LZ4
 	select MEMCG
 	select MEMCG_SWAP
 	select HZ_300
@@ -119,6 +118,7 @@ config MTK_ENABLE_AGO
 	select F2FS_FS
 	select F2FS_FS_SECURITY
 	select F2FS_FS_ENCRYPTION
+	select DM_VERITY_FEC
 	select DM_ANDROID_VERITY_AT_MOST_ONCE_DEFAULT_ENABLED
 	---help---
 	Enable/Disable GMO related feautre

@@ -1,5 +1,4 @@
-#
-# Copyright (C) 2015 MediaTek Inc.
+# Copyright (C) 2017 MediaTek Inc.
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License version 2 as
@@ -11,43 +10,25 @@
 # GNU General Public License for more details.
 #
 
-obj-y += fliper/
-obj-y += perfmgr/
-obj-y += smart/
-obj-y += eas_controller/
+subdir-ccflags-y += -I$(srctree)/drivers/misc/mediatek/performance/perf_ioctl/ \
+		    -I$(srctree)/drivers/misc/mediatek/performance/include/ \
+		    -I$(srctree)/drivers/misc/mediatek/base/power/include/ \
 
-obj-$(CONFIG_MACH_MT6757) += perf_ioctl/
-obj-$(CONFIG_MACH_MT6763) += perf_ioctl/
-obj-$(CONFIG_MACH_MT6739) += perf_ioctl/
-obj-$(CONFIG_MACH_MT6758) += perf_ioctl/
-obj-$(CONFIG_MACH_MT6771) += perf_ioctl/
-obj-$(CONFIG_MACH_MT6775) += perf_ioctl/
 
-obj-$(CONFIG_MACH_MT6799) += legacy_controller/
-obj-$(CONFIG_MACH_MT6757) += legacy_controller/
-obj-$(CONFIG_MACH_MT6759) += legacy_controller/
-obj-$(CONFIG_MACH_MT6763) += legacy_controller/
-obj-$(CONFIG_MACH_MT6739) += legacy_controller/
-obj-$(CONFIG_MACH_MT6758) += legacy_controller/
-obj-$(CONFIG_MACH_MT6771) += legacy_controller/
-obj-$(CONFIG_MACH_MT6775) += legacy_controller/
+obj-y += perfmgr_main.o
+obj-y += base/
 
-obj-y += cpu_loading/
+obj-$(CONFIG_MTK_PERF_OBSERVER) += observer/
+obj-$(CONFIG_MTK_RESYM) += resym/
+
+ifeq (,$(findstring mt8,$(CONFIG_MTK_PLATFORM)))
+	obj-$(CONFIG_MTK_BASE_POWER) += boost_ctrl/
+	obj-$(CONFIG_MTK_BASE_POWER) += tchbst/
+endif
+
+obj-y += perf_ioctl/
+obj-$(CONFIG_MTK_FPSGO_V3) += fpsgo_v3/
 
 obj-$(CONFIG_MTK_LOAD_TRACKER) += load_track/
+obj-$(CONFIG_MTK_LOAD_TRACKER) += uload_ind/
 
-ifeq ($(CONFIG_MTK_FPSGO), y)
-	ifeq ($(CONFIG_MACH_MT6771), y)
-		ccflags-y += -DCONFIG_MTK_FPSGO_V2
-		obj-y += fpsgo_v2/
-	else ifeq ($(CONFIG_MACH_MT6775), y)
-		ccflags-y += -DCONFIG_MTK_FPSGO_V2
-		obj-y += fpsgo_v2/
-	else
-		obj-y += fpsgo/
-	endif
-endif
-
-ifneq ($(wildcard $(srctree)/drivers/misc/mediatek/performance/perfmgr/$(MTK_PLATFORM)/),)
-		obj-y += fbc/
-endif

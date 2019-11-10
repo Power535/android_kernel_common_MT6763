@@ -108,7 +108,7 @@ static int spi_read(struct tc_device *tc, u32 off, u32 *val)
 					  + ODN_SPI_MST_STATUS);
 
 		if (cnt++ > 10000) {
-			dev_err(&tc->pdev->dev,
+			dev_info(&tc->pdev->dev,
 				"spi_read: Time out reading SPI reg (0x%x)\n",
 				off);
 			return -1;
@@ -151,7 +151,7 @@ static int get_odin_sai_status(struct tc_device *tc, int bank)
 	if (tc_is_interface_aligned(eyes, clk_taps, train_ack))
 		return SAI_STATUS_ALIGNED;
 
-	dev_warn(&tc->pdev->dev, "odin bank %d is unaligned\n", bank);
+	dev_info(&tc->pdev->dev, "odin bank %d is unaligned\n", bank);
 	return SAI_STATUS_UNALIGNED;
 }
 
@@ -224,7 +224,7 @@ static int get_dut_sai_status(struct tc_device *tc, int bank)
 	if (tc_is_interface_aligned(eyes, clk_taps, train_ack))
 		return SAI_STATUS_ALIGNED;
 
-	dev_warn(&tc->pdev->dev, "dut bank %d is unaligned\n", bank);
+	dev_info(&tc->pdev->dev, "dut bank %d is unaligned\n", bank);
 	return SAI_STATUS_UNALIGNED;
 }
 
@@ -269,12 +269,12 @@ static int odin_mmcm_counter_calc(struct device *dev,
 	 * Check specified input frequency is within range
 	 */
 	if (freq_input < ODN_INPUT_CLOCK_SPEED_MIN) {
-		dev_err(dev, "Input frequency (%u hz) below minimum supported value (%u hz)\n",
+		dev_info(dev, "Input frequency (%u hz) below minimum supported value (%u hz)\n",
 			freq_input, ODN_INPUT_CLOCK_SPEED_MIN);
 		return -EINVAL;
 	}
 	if (freq_input > ODN_INPUT_CLOCK_SPEED_MAX) {
-		dev_err(dev, "Input frequency (%u hz) above maximum supported value (%u hz)\n",
+		dev_info(dev, "Input frequency (%u hz) above maximum supported value (%u hz)\n",
 			freq_input, ODN_INPUT_CLOCK_SPEED_MAX);
 		return -EINVAL;
 	}
@@ -283,12 +283,12 @@ static int odin_mmcm_counter_calc(struct device *dev,
 	 * Check specified target frequency is within range
 	 */
 	if (freq_output < ODN_OUTPUT_CLOCK_SPEED_MIN) {
-		dev_err(dev, "Output frequency (%u hz) below minimum supported value (%u hz)\n",
+		dev_info(dev, "Output frequency (%u hz) below minimum supported value (%u hz)\n",
 			freq_input, ODN_OUTPUT_CLOCK_SPEED_MIN);
 		return -EINVAL;
 	}
 	if (freq_output > ODN_OUTPUT_CLOCK_SPEED_MAX) {
-		dev_err(dev, "Output frequency (%u hz) above maximum supported value (%u hz)\n",
+		dev_info(dev, "Output frequency (%u hz) above maximum supported value (%u hz)\n",
 			freq_output, ODN_OUTPUT_CLOCK_SPEED_MAX);
 		return -EINVAL;
 	}
@@ -396,14 +396,14 @@ static int odin_mmcm_counter_calc(struct device *dev,
 	}
 
 	if(best_diff != 0xFFFFFFFF){
-		dev_warn(dev, "Odin: Found similar freq of %u Hz\n", freq_output - best_diff);
+		dev_info(dev, "Odin: Found similar freq of %u Hz\n", freq_output - best_diff);
 		*d = d_best;
 		*m = m_best;
 		*o = o_best;
 		return 0;
 	}
 
-	dev_err(dev, "Odin: Unable to find integer values for d, m and o for requested frequency (%u)\n",
+	dev_info(dev, "Odin: Unable to find integer values for d, m and o for requested frequency (%u)\n",
 		freq_output);
 
 	return -ERANGE;
@@ -497,7 +497,7 @@ static int odin_fpga_set_dut_core_clk(struct tc_device *tc,
 	err = tc_iopol32_nonzero(ODN_MMCM_LOCK_STATUS_DUT_CORE,
 				 base + ODN_CORE_MMCM_LOCK_STATUS);
 	if (err != 0) {
-		dev_err(dev, "MMCM failed to lock for DUT core\n");
+		dev_info(dev, "MMCM failed to lock for DUT core\n");
 		return err;
 	}
 
@@ -599,7 +599,7 @@ static int odin_fpga_set_dut_if_clk(struct tc_device *tc,
 	err = tc_iopol32_nonzero(ODN_MMCM_LOCK_STATUS_DUT_IF,
 				 base + ODN_CORE_MMCM_LOCK_STATUS);
 	if (err != 0) {
-		dev_err(dev, "MMCM failed to lock for DUT IF\n");
+		dev_info(dev, "MMCM failed to lock for DUT IF\n");
 		return err;
 	}
 
@@ -734,12 +734,12 @@ static int odin_hard_reset_bonnie(struct tc_device *tc)
 			break;
 		}
 
-		dev_warn(&tc->pdev->dev,
+		dev_info(&tc->pdev->dev,
 			"Warning- not all banks have aligned. Trying again.\n");
 	}
 
 	if (!aligned)
-		dev_warn(&tc->pdev->dev, "odin_hard_reset failed\n");
+		dev_info(&tc->pdev->dev, "odin_hard_reset failed\n");
 
 	return (aligned) ? 0 : 1; /* return 0 for success */
 }
@@ -784,13 +784,13 @@ static void odin_set_mem_latency(struct tc_device *tc,
 	spi_write(tc, 0x1009, mem_latency);
 
 	if (spi_read(tc, 0x1009, &regval) != 0) {
-		dev_err(&tc->pdev->dev,
+		dev_info(&tc->pdev->dev,
 			"Failed to read back memory latency register");
 		return;
 	}
 
 	if (mem_latency != regval) {
-		dev_err(&tc->pdev->dev,
+		dev_info(&tc->pdev->dev,
 			"Memory latency register doesn't match requested value"
 			" (actual: %#08x, expected: %#08x)\n",
 			regval, mem_latency);
@@ -828,7 +828,7 @@ static int odin_hard_reset(struct tc_device *tc, int core_clock, int mem_clock)
 	if (tc->version == ODIN_VERSION_FPGA)
 		return odin_hard_reset_fpga(tc, core_clock, mem_clock);
 
-	dev_err(&tc->pdev->dev, "Invalid Odin version");
+	dev_info(&tc->pdev->dev, "Invalid Odin version");
 	return 1;
 #else /* defined(SUPPORT_RGX) */
 	return 0;
@@ -842,7 +842,7 @@ static int odin_hw_init(struct tc_device *tc, int core_clock, int mem_clock,
 
 	err = odin_hard_reset(tc, core_clock, mem_clock);
 	if (err) {
-		dev_err(&tc->pdev->dev, "Failed to initialise Odin");
+		dev_info(&tc->pdev->dev, "Failed to initialise Odin");
 		goto err_out;
 	}
 
@@ -880,7 +880,7 @@ static int odin_enable_irq(struct tc_device *tc)
 		IRQF_SHARED, DRV_NAME, tc);
 
 	if (err) {
-		dev_err(&tc->pdev->dev,
+		dev_info(&tc->pdev->dev,
 			"Error - IRQ %d failed to register\n",
 			tc->pdev->irq);
 	} else {
@@ -917,7 +917,7 @@ odin_detect_daughterboard_version(struct tc_device *tc)
 
 	switch (val) {
 	default:
-		dev_err(&tc->pdev->dev,
+		dev_info(&tc->pdev->dev,
 			"Unknown odin version ID type %#x "
 			"(DB_TYPE_ID: %#08x)\n",
 			val, reg);
@@ -955,7 +955,7 @@ static int odin_dev_init(struct tc_device *tc, struct pci_dev *pdev,
 	tc->tc_mem.size = pci_resource_len(pdev, ODN_DDR_BAR);
 
 	if (tc->tc_mem.size < pdp_mem_size) {
-		dev_err(&pdev->dev,
+		dev_info(&pdev->dev,
 			"Odin MEM region (bar %d) has size of %lu which is smaller than the requested PDP heap of %lu",
 			ODN_DDR_BAR,
 			(unsigned long)tc->tc_mem.size,
@@ -968,7 +968,7 @@ static int odin_dev_init(struct tc_device *tc, struct pci_dev *pdev,
 #if defined(SUPPORT_FAKE_SECURE_ION_HEAP)
 	if (tc->tc_mem.size <
 	    (pdp_mem_size + secure_mem_size)) {
-		dev_err(&pdev->dev,
+		dev_info(&pdev->dev,
 			"Odin MEM region (bar %d) has size of %lu which is smaller than the requested PDP heap of %lu plus the requested secure heap size %lu",
 			ODN_DDR_BAR,
 			(unsigned long)tc->tc_mem.size,
@@ -997,7 +997,7 @@ static int odin_dev_init(struct tc_device *tc, struct pci_dev *pdev,
 #endif
 
 	if (tc->ext_heap_mem_size < TC_EXT_MINIMUM_MEM_SIZE) {
-		dev_warn(&pdev->dev,
+		dev_info(&pdev->dev,
 			"Odin MEM region (bar 4) has size of %lu, with %lu pdp_mem_size only %lu bytes are left for ext device, which looks too small",
 			(unsigned long)tc->tc_mem.size,
 			(unsigned long)pdp_mem_size,
@@ -1018,7 +1018,7 @@ static int odin_dev_init(struct tc_device *tc, struct pci_dev *pdev,
 #if defined(SUPPORT_ION)
 	err = tc_ion_init(tc, ODN_DDR_BAR);
 	if (err) {
-		dev_err(&pdev->dev, "Failed to initialise ION\n");
+		dev_info(&pdev->dev, "Failed to initialise ION\n");
 		goto err_odin_unmap_sys_registers;
 	}
 #endif
@@ -1085,20 +1085,20 @@ int odin_init(struct tc_device *tc, struct pci_dev *pdev,
 
 	err = odin_dev_init(tc, pdev, pdp_mem_size, secure_mem_size);
 	if (err) {
-		dev_err(&pdev->dev, "odin_dev_init failed\n");
+		dev_info(&pdev->dev, "odin_dev_init failed\n");
 		goto err_out;
 	}
 
 	err = odin_hw_init(tc, core_clock, mem_clock,
 			   mem_latency, mem_wresp_latency);
 	if (err) {
-		dev_err(&pdev->dev, "odin_hw_init failed\n");
+		dev_info(&pdev->dev, "odin_hw_init failed\n");
 		goto err_dev_cleanup;
 	}
 
 	err = odin_enable_irq(tc);
 	if (err) {
-		dev_err(&pdev->dev,
+		dev_info(&pdev->dev,
 			"Failed to initialise IRQ\n");
 		goto err_dev_cleanup;
 	}
@@ -1175,7 +1175,7 @@ int odin_register_pdp_device(struct tc_device *tc)
 	tc->pdp_dev = platform_device_register_full(&pdp_device_info);
 	if (IS_ERR(tc->pdp_dev)) {
 		err = PTR_ERR(tc->pdp_dev);
-		dev_err(&tc->pdev->dev,
+		dev_info(&tc->pdev->dev,
 			"Failed to register PDP device (%d)\n", err);
 		tc->pdp_dev = NULL;
 		goto err_out;
@@ -1233,7 +1233,7 @@ int odin_register_ext_device(struct tc_device *tc)
 
 	if (IS_ERR(tc->ext_dev)) {
 		err = PTR_ERR(tc->ext_dev);
-		dev_err(&tc->pdev->dev,
+		dev_info(&tc->pdev->dev,
 			"Failed to register rogue device (%d)\n", err);
 		tc->ext_dev = NULL;
 	}
@@ -1259,7 +1259,7 @@ void odin_enable_interrupt_register(struct tc_device *tc,
 			"Enabling Odin DUT interrupts\n");
 		break;
 	default:
-		dev_err(&tc->pdev->dev,
+		dev_info(&tc->pdev->dev,
 			"Error - illegal interrupt id\n");
 		return;
 	}
@@ -1287,7 +1287,7 @@ void odin_disable_interrupt_register(struct tc_device *tc,
 			"Disabling Odin DUT interrupts\n");
 		break;
 	default:
-		dev_err(&tc->pdev->dev,
+		dev_info(&tc->pdev->dev,
 			"Error - illegal interrupt id\n");
 		return;
 	}

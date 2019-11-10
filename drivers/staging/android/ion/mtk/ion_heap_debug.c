@@ -103,9 +103,15 @@ int ion_heap_debug_show(struct ion_heap *heap, struct seq_file *s, void *unused)
 	size_t fr_sz = 0;
 	size_t sec_sz = 0;
 	size_t prot_sz = 0;
+	size_t wfd_sz = 0, happ_sz = 0, happ_extra_sz = 0;
+	size_t sdsp_sz = 0, sdsp_shared_sz = 0;
 	size_t cam_sz = 0;
 	size_t va2mva_sz = 0;
 	size_t mm_sz = 0;
+
+	current_ts = sched_clock();
+	do_div(current_ts, 1000000);
+	seq_printf(s, "time 3 %lld ms\n", current_ts);
 
 	if (heap->type == (int)ION_HEAP_TYPE_MULTIMEDIA) {
 		int i;
@@ -150,11 +156,17 @@ int ion_heap_debug_show(struct ion_heap *heap, struct seq_file *s, void *unused)
 			     "flag", "heap_id", "pid(alloc_pid)", "comm(client)", "v1", "v2", "v3", "v4", "dbg_name");
 
 	mutex_lock(&dev->buffer_lock);
+
+	current_ts = sched_clock();
+	do_div(current_ts, 1000000);
+	seq_printf(s, "time 4 %lld ms\n", current_ts);
+
 	for (n = rb_first(&dev->buffers); n; n = rb_next(n)) {
 		struct ion_buffer
 		*buffer = rb_entry(n, struct ion_buffer, node);
 		int port = 0;
 		unsigned int mva = 0;
+		unsigned int heap_id = buffer->heap->id;
 
 		bug_info = (struct ion_mm_buffer_info *)buffer->priv_virt;
 		port = bug_info->module_id ? bug_info->module_id : bug_info->fix_module_id;
@@ -171,18 +183,29 @@ int ion_heap_debug_show(struct ion_heap *heap, struct seq_file *s, void *unused)
 				     pdbg->value4, pdbg->dbg_name);
 
 		if (heap->type == (int)ION_HEAP_TYPE_MULTIMEDIA_SEC) {
-			if (buffer->heap->id == ION_HEAP_TYPE_MULTIMEDIA_SEC)
+			if (heap_id == ION_HEAP_TYPE_MULTIMEDIA_SEC)
 				sec_sz += buffer->size;
-			else if (buffer->heap->id == ION_HEAP_TYPE_MULTIMEDIA_PROT)
+			else if (heap_id == ION_HEAP_TYPE_MULTIMEDIA_PROT)
 				prot_sz += buffer->size;
-			else if (buffer->heap->id == ION_HEAP_TYPE_MULTIMEDIA_2D_FR)
+			else if (heap_id == ION_HEAP_TYPE_MULTIMEDIA_2D_FR)
 				fr_sz += buffer->size;
+			else if (heap_id == ION_HEAP_TYPE_MULTIMEDIA_WFD)
+				wfd_sz += buffer->size;
+			else if (heap_id == ION_HEAP_TYPE_MULTIMEDIA_HAPP)
+				happ_sz += buffer->size;
+			else if (heap_id == ION_HEAP_TYPE_MULTIMEDIA_HAPP_EXTRA)
+				happ_extra_sz += buffer->size;
+			else if (heap_id == ION_HEAP_TYPE_MULTIMEDIA_SDSP)
+				sdsp_sz += buffer->size;
+			else if (heap_id ==
+				 ION_HEAP_TYPE_MULTIMEDIA_SDSP_SHARED)
+				sdsp_shared_sz += buffer->size;
 		} else {
-			if (buffer->heap->id == ION_HEAP_TYPE_MULTIMEDIA)
+			if (heap_id == ION_HEAP_TYPE_MULTIMEDIA)
 				mm_sz += buffer->size;
-			else if (buffer->heap->id == ION_HEAP_TYPE_MULTIMEDIA_FOR_CAMERA)
+			else if (heap_id == ION_HEAP_TYPE_MULTIMEDIA_FOR_CAMERA)
 				cam_sz += buffer->size;
-			else if (buffer->heap->id == ION_HEAP_TYPE_MULTIMEDIA_MAP_MVA)
+			else if (heap_id == ION_HEAP_TYPE_MULTIMEDIA_MAP_MVA)
 				va2mva_sz += buffer->size;
 		}
 
@@ -190,10 +213,18 @@ int ion_heap_debug_show(struct ion_heap *heap, struct seq_file *s, void *unused)
 			has_orphaned = true;
 	}
 
+	current_ts = sched_clock();
+	do_div(current_ts, 1000000);
+	seq_printf(s, "time 5 %lld ms\n", current_ts);
+
 	if (has_orphaned) {
 		ION_PRINT_LOG_OR_SEQ(s, "-----orphaned buffer list:------------------\n");
 		ion_dump_all_share_fds(s);
 	}
+
+	current_ts = sched_clock();
+	do_div(current_ts, 1000000);
+	seq_printf(s, "time 6 %lld ms\n", current_ts);
 
 	mutex_unlock(&dev->buffer_lock);
 
@@ -203,6 +234,13 @@ int ion_heap_debug_show(struct ion_heap *heap, struct seq_file *s, void *unused)
 		ION_PRINT_LOG_OR_SEQ(s, "%16s %16zu\n", "sec-sz:", sec_sz);
 		ION_PRINT_LOG_OR_SEQ(s, "%16s %16zu\n", "prot-sz:", prot_sz);
 		ION_PRINT_LOG_OR_SEQ(s, "%16s %16zu\n", "2d-fr-sz:", fr_sz);
+		ION_PRINT_LOG_OR_SEQ(s, "%16s %16zu\n", "wfs-sz:", wfd_sz);
+		ION_PRINT_LOG_OR_SEQ(s, "%16s %16zu\n", "happ-sz:", happ_sz);
+		ION_PRINT_LOG_OR_SEQ(s, "%16s %16zu\n", "happ-extra-sz:",
+				     happ_extra_sz);
+		ION_PRINT_LOG_OR_SEQ(s, "%16s %16zu\n", "sdsp-sz:", sdsp_sz);
+		ION_PRINT_LOG_OR_SEQ(s, "%16s %16zu\n", "sdsp-shared-sz:",
+				     sdsp_shared_sz);
 		ION_PRINT_LOG_OR_SEQ(s, "----------------------------------------------------\n");
 	} else {
 		ION_PRINT_LOG_OR_SEQ(s, "----------------------------------------------------\n");
@@ -248,6 +286,7 @@ int ion_heap_debug_show(struct ion_heap *heap, struct seq_file *s, void *unused)
 	}
 	current_ts = sched_clock();
 	do_div(current_ts, 1000000);
+	ION_PRINT_LOG_OR_SEQ(s, "current time %lld ms\n", current_ts);
 	up_read(&dev->lock);
 
 	return 0;

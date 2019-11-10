@@ -192,6 +192,9 @@ static wait_queue_head_t enc_wait_queue;
 static spinlock_t jpeg_enc_lock;
 static int enc_status;
 static int enc_ready;
+static DEFINE_MUTEX(jpeg_enc_power_lock);
+static DEFINE_MUTEX(DriverOpenCountLock);
+static int Driver_Open_Count;
 
 #ifdef CONFIG_MTK_QOS_SUPPORT
 struct pm_qos_request jpgenc_qos_request;
@@ -457,10 +460,12 @@ static int jpeg_drv_enc_init(void)
 	}
 	spin_unlock(&jpeg_enc_lock);
 
+	mutex_lock(&jpeg_enc_power_lock);
 	if (retValue == 0) {
 		jpeg_drv_enc_power_on();
 		jpeg_drv_enc_verify_state_and_reset();
 	}
+	mutex_unlock(&jpeg_enc_power_lock);
 
 	return retValue;
 }
@@ -473,8 +478,10 @@ static void jpeg_drv_enc_deinit(void)
 		enc_ready = 0;
 		spin_unlock(&jpeg_enc_lock);
 
+		mutex_lock(&jpeg_enc_power_lock);
 		jpeg_drv_enc_reset();
 		jpeg_drv_enc_power_off();
+		mutex_unlock(&jpeg_enc_power_lock);
 	}
 }
 
@@ -1273,6 +1280,10 @@ static long jpeg_unlocked_ioctl(struct file *file, unsigned int cmd, unsigned lo
 static int jpeg_open(struct inode *inode, struct file *file)
 {
 	unsigned int *pStatus;
+	mutex_lock(&DriverOpenCountLock);
+	Driver_Open_Count++;
+	mutex_unlock(&DriverOpenCountLock);
+
 	/* Allocate and initialize private data */
 	 file->private_data = kmalloc(sizeof(unsigned int), GFP_ATOMIC);
 
@@ -1295,6 +1306,25 @@ static ssize_t jpeg_read(struct file *file, char __user *data, size_t len, loff_
 
 static int jpeg_release(struct inode *inode, struct file *file)
 {
+	mutex_lock(&DriverOpenCountLock);
+	Driver_Open_Count--;
+	if (Driver_Open_Count == 0) {
+		if (enc_status != 0) {
+			JPEG_WRN("Error! Enable error handling for jpeg encoder");
+			jpeg_drv_enc_deinit();
+		}
+
+#ifdef JPEG_DEC_DRIVER
+		if (dec_status != 0) {
+			JPEG_WRN("Error! Enable error handling for jpeg decoder");
+			jpeg_drv_dec_deinit();
+		}
+#endif
+	}
+	mutex_unlock(&DriverOpenCountLock);
+
+
+
 	if (file->private_data != NULL) {
 		kfree(file->private_data);
 		file->private_data = NULL;
@@ -1704,6 +1734,7 @@ static int __init jpeg_init(void)
 	cmdqCoreRegisterCB(CMDQ_GROUP_JPEG,
 			   cmdqJpegClockOn, cmdqJpegDumpInfo, cmdqJpegResetEng, cmdqJpegClockOff);
 #endif
+	Driver_Open_Count = 0;
 	return 0;
 }
 

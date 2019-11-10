@@ -841,6 +841,8 @@ struct pwr_ctrl {
 	u8 mp1_cpu3_wfi_en;
 
 	/* Auto-gen End */
+
+	u32 md_ddr_en_0_dbc_len;
 };
 /* code gen by spm_pwr_ctrl_atf.pl, need struct pwr_ctrl */
 enum pwr_ctrl_enum {
@@ -957,6 +959,8 @@ enum pwr_ctrl_enum {
 	PWR_MP1_CPU2_WFI_EN,
 	/* MP1_CPU3_WFI_EN */
 	PWR_MP1_CPU3_WFI_EN,
+
+	PWR_MD_DDR_EN_0_DBC_LEN,
 
 	PWR_MAX_COUNT,
 };

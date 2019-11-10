@@ -107,6 +107,26 @@ struct aee_user_thread_maps {
 	unsigned char *Userthread_maps; /*8k stack ,define to char only for match 64bit/32bit*/
 };
 
+struct unwind_info_stack {
+	pid_t tid __packed __aligned(8);
+#ifdef __aarch64__
+	__u64 sp;
+#else
+	long sp __packed __aligned(8);
+#endif
+	int StackLength __packed __aligned(8);
+	unsigned char *Userthread_Stack __packed __aligned(8);
+};
+
+struct unwind_info_rms {
+	pid_t tid __packed __aligned(8);
+	struct pt_regs *regs __packed __aligned(8);
+	int StackLength __packed __aligned(8);
+	unsigned char *Userthread_Stack __packed __aligned(8);
+	int Userthread_mapsLength __packed __aligned(8);
+	unsigned char *Userthread_maps __packed __aligned(8);
+};
+
 #ifdef CONFIG_MTK_PRINTK_UART_CONSOLE
 extern int printk_disable_uart;
 #endif
@@ -271,10 +291,22 @@ void aed_combo_exception_api(const int *log, int log_size, const int *phy, int p
 void aed_common_exception_api(const char *assert_type, const int *log, int log_size, const int *phy,
 			     int phy_size, const char *detail, const int db_opt);
 
-void aee_kernel_wdt_kick_Powkey_api(const char *module, int msg);
-int aee_kernel_wdt_kick_api(int kinterval);
-void aee_powerkey_notify_press(unsigned long pressed);
-int aee_kernel_Powerkey_is_press(void);
+static inline void  aee_kernel_wdt_kick_Powkey_api(const char *module, int msg)
+{
+
+}
+static inline int aee_kernel_wdt_kick_api(int kinterval)
+{
+	return 0;
+}
+static inline void aee_powerkey_notify_press(unsigned long pressed)
+{
+
+}
+static inline int aee_kernel_Powerkey_is_press(void)
+{
+	return 0;
+}
 
 void ipanic_recursive_ke(struct pt_regs *regs, struct pt_regs *excp_regs, int cpu);
 

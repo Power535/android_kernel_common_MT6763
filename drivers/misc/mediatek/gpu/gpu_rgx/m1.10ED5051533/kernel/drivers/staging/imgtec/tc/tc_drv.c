@@ -148,7 +148,7 @@ static int mtrr_setup(struct pci_dev *pdev,
 	/* Reset MTRR */
 	mtrr = mtrr_add(mem_start, mem_size, MTRR_TYPE_UNCACHABLE, 0);
 	if (mtrr < 0) {
-		dev_err(&pdev->dev, "%d - %s: mtrr_add failed (%d)\n",
+		dev_info(&pdev->dev, "%d - %s: mtrr_add failed (%d)\n",
 			__LINE__, __func__, mtrr);
 		mtrr = -2;
 		goto err_out;
@@ -156,7 +156,7 @@ static int mtrr_setup(struct pci_dev *pdev,
 
 	err = mtrr_del(mtrr, mem_start, mem_size);
 	if (err < 0) {
-		dev_err(&pdev->dev, "%d - %s: mtrr_del failed (%d)\n",
+		dev_info(&pdev->dev, "%d - %s: mtrr_del failed (%d)\n",
 			__LINE__, __func__, err);
 		mtrr = -2;
 		goto err_out;
@@ -174,7 +174,7 @@ static int mtrr_setup(struct pci_dev *pdev,
 
 	err = mtrr_del(mtrr, mem_start, mem_size);
 	if (err < 0) {
-		dev_err(&pdev->dev, "%d - %s: mtrr_del failed (%d)\n",
+		dev_info(&pdev->dev, "%d - %s: mtrr_del failed (%d)\n",
 			__LINE__, __func__, err);
 		mtrr = -2;
 		goto err_out;
@@ -184,7 +184,7 @@ static int mtrr_setup(struct pci_dev *pdev,
 		/* Replace 0 with a non-overlapping WRBACK mtrr */
 		err = mtrr_add(0, mem_start, MTRR_TYPE_WRBACK, 0);
 		if (err < 0) {
-			dev_err(&pdev->dev, "%d - %s: mtrr_add failed (%d)\n",
+			dev_info(&pdev->dev, "%d - %s: mtrr_add failed (%d)\n",
 				__LINE__, __func__, err);
 			mtrr = -2;
 			goto err_out;
@@ -193,7 +193,7 @@ static int mtrr_setup(struct pci_dev *pdev,
 
 	mtrr = mtrr_add(mem_start, mem_size, MTRR_TYPE_WRCOMB, 0);
 	if (mtrr < 0) {
-		dev_err(&pdev->dev, "%d - %s: mtrr_add failed (%d)\n",
+		dev_info(&pdev->dev, "%d - %s: mtrr_add failed (%d)\n",
 			__LINE__, __func__, mtrr);
 		mtrr = -1;
 	}
@@ -258,7 +258,7 @@ void tc_mtrr_cleanup(struct tc_device *tc)
 			       tc->tc_mem.base,
 			       tc->tc_mem.size);
 		if (err < 0)
-			dev_err(&tc->pdev->dev,
+			dev_info(&tc->pdev->dev,
 				"mtrr_del failed (%d)\n", err);
 #endif
 	}
@@ -303,7 +303,7 @@ int tc_iopol32_nonzero(u32 mask, void __iomem *addr)
 		msleep(20);
 	}
 	if (polnum == 50) {
-		pr_err(DRV_NAME " iopol32_nonzero timeout\n");
+		pr_info(DRV_NAME " iopol32_nonzero timeout\n");
 		return -ETIME;
 	}
 	return 0;
@@ -348,7 +348,7 @@ int setup_io_region(struct pci_dev *pdev,
 
 	err = request_pci_io_addr(pdev, index, offset, size);
 	if (err) {
-		dev_err(&pdev->dev,
+		dev_info(&pdev->dev,
 			"Failed to request tc registers (err=%d)\n", err);
 		return -EIO;
 	}
@@ -360,7 +360,7 @@ int setup_io_region(struct pci_dev *pdev,
 		= ioremap_nocache(region->region.base, region->region.size);
 
 	if (!region->registers) {
-		dev_err(&pdev->dev, "Failed to map tc registers\n");
+		dev_info(&pdev->dev, "Failed to map tc registers\n");
 		release_pci_io_addr(pdev, index,
 			region->region.base, region->region.size);
 		return -EIO;
@@ -419,7 +419,7 @@ static int tc_cleanup(struct pci_dev *pdev)
 	int i, err = 0;
 
 	if (!tc) {
-		dev_err(&pdev->dev, "No tc device resources found\n");
+		dev_info(&pdev->dev, "No tc device resources found\n");
 		return -ENODEV;
 	}
 
@@ -463,7 +463,7 @@ static int tc_init(struct pci_dev *pdev, const struct pci_device_id *id)
 
 	err = tc_enable(&pdev->dev);
 	if (err) {
-		dev_err(&pdev->dev,
+		dev_info(&pdev->dev,
 			"tc_enable failed %d\n", err);
 		goto err_release;
 	}
@@ -507,7 +507,7 @@ static int tc_init(struct pci_dev *pdev, const struct pci_device_id *id)
 			&tc_debugfs_rogue_name_blobs[tc->version]);
 
 #if defined(TC_FAKE_INTERRUPTS)
-	dev_warn(&pdev->dev, "WARNING: Faking interrupts every %d ms",
+	dev_info(&pdev->dev, "WARNING: Faking interrupts every %d ms",
 		FAKE_INTERRUPT_TIME_MS);
 #endif
 
@@ -524,7 +524,7 @@ static int tc_init(struct pci_dev *pdev, const struct pci_device_id *id)
 
 err_out:
 	if (err)
-		dev_err(&pdev->dev, "tc_init failed\n");
+		dev_info(&pdev->dev, "tc_init failed\n");
 
 	return err;
 
@@ -542,7 +542,7 @@ static void tc_exit(struct pci_dev *pdev)
 					   tc_devres_release, NULL, NULL);
 
 	if (!tc) {
-		dev_err(&pdev->dev, "No tc device resources found\n");
+		dev_info(&pdev->dev, "No tc device resources found\n");
 		return;
 	}
 
@@ -600,13 +600,13 @@ int tc_set_interrupt_handler(struct device *dev, int interrupt_id,
 	unsigned long flags;
 
 	if (!tc) {
-		dev_err(dev, "No tc device resources found\n");
+		dev_info(dev, "No tc device resources found\n");
 		err = -ENODEV;
 		goto err_out;
 	}
 
 	if (interrupt_id < 0 || interrupt_id >= TC_INTERRUPT_COUNT) {
-		dev_err(dev, "Invalid interrupt ID (%d)\n", interrupt_id);
+		dev_info(dev, "Invalid interrupt ID (%d)\n", interrupt_id);
 		err = -EINVAL;
 		goto err_out;
 	}
@@ -632,19 +632,19 @@ int tc_enable_interrupt(struct device *dev, int interrupt_id)
 	unsigned long flags;
 
 	if (!tc) {
-		dev_err(dev, "No tc device resources found\n");
+		dev_info(dev, "No tc device resources found\n");
 		err = -ENODEV;
 		goto err_out;
 	}
 	if (interrupt_id < 0 || interrupt_id >= TC_INTERRUPT_COUNT) {
-		dev_err(dev, "Invalid interrupt ID (%d)\n", interrupt_id);
+		dev_info(dev, "Invalid interrupt ID (%d)\n", interrupt_id);
 		err = -EINVAL;
 		goto err_out;
 	}
 	spin_lock_irqsave(&tc->interrupt_enable_lock, flags);
 
 	if (tc->interrupt_handlers[interrupt_id].enabled) {
-		dev_warn(dev, "Interrupt ID %d already enabled\n",
+		dev_info(dev, "Interrupt ID %d already enabled\n",
 			interrupt_id);
 		err = -EEXIST;
 		goto err_unlock;
@@ -671,19 +671,19 @@ int tc_disable_interrupt(struct device *dev, int interrupt_id)
 	unsigned long flags;
 
 	if (!tc) {
-		dev_err(dev, "No tc device resources found\n");
+		dev_info(dev, "No tc device resources found\n");
 		err = -ENODEV;
 		goto err_out;
 	}
 	if (interrupt_id < 0 || interrupt_id >= TC_INTERRUPT_COUNT) {
-		dev_err(dev, "Invalid interrupt ID (%d)\n", interrupt_id);
+		dev_info(dev, "Invalid interrupt ID (%d)\n", interrupt_id);
 		err = -EINVAL;
 		goto err_out;
 	}
 	spin_lock_irqsave(&tc->interrupt_enable_lock, flags);
 
 	if (!tc->interrupt_handlers[interrupt_id].enabled) {
-		dev_warn(dev, "Interrupt ID %d already disabled\n",
+		dev_info(dev, "Interrupt ID %d already disabled\n",
 			interrupt_id);
 	}
 	tc->interrupt_handlers[interrupt_id].enabled = false;
@@ -706,7 +706,7 @@ int tc_sys_info(struct device *dev, u32 *tmp, u32 *pll)
 		NULL, NULL);
 
 	if (!tc) {
-		dev_err(dev, "No tc device resources found\n");
+		dev_info(dev, "No tc device resources found\n");
 		goto err_out;
 	}
 
@@ -734,7 +734,7 @@ int tc_sys_strings(struct device *dev,
 		NULL, NULL);
 
 	if (!tc) {
-		dev_err(dev, "No tc device resources found\n");
+		dev_info(dev, "No tc device resources found\n");
 		goto err_out;
 	}
 

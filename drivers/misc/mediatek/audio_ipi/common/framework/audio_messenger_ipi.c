@@ -12,7 +12,7 @@
  */
 
 #include "audio_messenger_ipi.h"
-
+#include <linux/string.h>
 #include <linux/spinlock.h>
 
 #ifdef CONFIG_MTK_TINYSYS_SCP_SUPPORT

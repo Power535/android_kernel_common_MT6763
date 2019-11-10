@@ -117,6 +117,54 @@ s64 trusty_fast_call64(struct device *dev, u64 smcnr, u64 a0, u64 a1, u64 a2)
 }
 #endif
 
+#if defined(CONFIG_MTK_NEBULA_VM_SUPPORT) && defined(CONFIG_GZ_SMC_CALL_REMAP)
+static inline bool is_busy(int ret)
+{
+	return (ret == SM_ERR_BUSY || ret == SM_ERR_VM_BUSY);
+}
+
+static inline bool is_cpu_idle(int ret)
+{
+	return (ret == SM_ERR_CPU_IDLE || ret == SM_ERR_VM_CPU_IDLE);
+}
+
+static inline bool is_nop_call(u32 smc_nr)
+{
+	return (smc_nr == SMC_SC_NOP || smc_nr == SMC_SC_VM_NOP);
+}
+
+static inline bool is_vm_interrupted(int ret)
+{
+	return (ret == SM_ERR_VM_INTERRUPTED || ret == SM_ERR_VM_CPU_IDLE);
+}
+
+static inline bool is_interrupted(int ret)
+{
+	return (ret == SM_ERR_INTERRUPTED || ret == SM_ERR_CPU_IDLE ||
+			ret == SM_ERR_VM_INTERRUPTED || ret == SM_ERR_VM_CPU_IDLE);
+}
+#else
+static inline bool is_busy(int ret)
+{
+	return (ret == SM_ERR_BUSY);
+}
+
+static inline bool is_cpu_idle(int ret)
+{
+	return (ret == SM_ERR_CPU_IDLE);
+}
+
+static inline bool is_nop_call(u32 smc_nr)
+{
+	return (smc_nr == SMC_SC_NOP);
+}
+
+static inline bool is_interrupted(int ret)
+{
+	return (ret == SM_ERR_INTERRUPTED || ret == SM_ERR_CPU_IDLE);
+}
+#endif
+
 static ulong trusty_std_call_inner(struct device *dev, ulong smcnr,
 				   ulong a0, ulong a1, ulong a2)
 {
@@ -129,12 +177,20 @@ static ulong trusty_std_call_inner(struct device *dev, ulong smcnr,
 		ret = smc(smcnr, a0, a1, a2);
 		while ((s32)ret == SM_ERR_FIQ_INTERRUPTED)
 			ret = smc(SMC_SC_RESTART_FIQ, 0, 0, 0);
-		if ((int)ret != SM_ERR_BUSY || !retry)
+		if (!is_busy(ret) || !retry)
 			break;
 
 		dev_dbg(dev, "%s(0x%lx 0x%lx 0x%lx 0x%lx) returned busy, retry\n",
 			__func__, smcnr, a0, a1, a2);
 		retry--;
+
+#if defined(CONFIG_MTK_NEBULA_VM_SUPPORT) && defined(CONFIG_GZ_SMC_CALL_REMAP)
+		if ((s32)ret == SM_ERR_VM_BUSY && smcnr == SMC_SC_RESTART_LAST)
+			smcnr = SMC_SC_VM_RESTART_LAST;
+		else if ((s32)ret == SM_ERR_BUSY &&
+			 smcnr == SMC_SC_VM_RESTART_LAST)
+			smcnr = SMC_SC_RESTART_LAST;
+#endif
 	}
 
 	return ret;
@@ -151,12 +207,21 @@ static ulong trusty_std_call_helper(struct device *dev, ulong smcnr,
 		local_irq_disable();
 		atomic_notifier_call_chain(&s->notifier, TRUSTY_CALL_PREPARE,
 					   NULL);
+#if defined(CONFIG_MTK_NEBULA_VM_SUPPORT) && defined(CONFIG_GZ_SMC_CALL_REMAP)
+		/* For debug purpose.
+		 * a0 = !is_nop_call(smcnr), 0 means NOP, 1 means STDCALL
+		 * a1 = cpu core (get after local IRQ is disabled)
+		 */
+		if (smcnr == SMC_SC_RESTART_LAST ||
+		    smcnr == SMC_SC_VM_RESTART_LAST)
+			a1 = smp_processor_id();
+#endif
 		ret = trusty_std_call_inner(dev, smcnr, a0, a1, a2);
 		atomic_notifier_call_chain(&s->notifier, TRUSTY_CALL_RETURNED,
 					   NULL);
 		local_irq_enable();
 
-		if ((int)ret != SM_ERR_BUSY)
+		if (!is_busy(ret))
 			break;
 
 		if (sleep_time == 256)
@@ -204,7 +269,7 @@ s32 trusty_std_call32(struct device *dev, u32 smcnr, u32 a0, u32 a1, u32 a2)
 	BUG_ON(SMC_IS_FASTCALL(smcnr));
 	BUG_ON(SMC_IS_SMC64(smcnr));
 
-	if (smcnr != SMC_SC_NOP) {
+	if (!is_nop_call(smcnr)) {
 		mutex_lock(&s->smc_lock);
 		reinit_completion(&s->cpu_idle_completion);
 	}
@@ -213,19 +278,30 @@ s32 trusty_std_call32(struct device *dev, u32 smcnr, u32 a0, u32 a1, u32 a2)
 		__func__, smcnr, a0, a1, a2);
 
 	ret = trusty_std_call_helper(dev, smcnr, a0, a1, a2);
-	while (ret == SM_ERR_INTERRUPTED || ret == SM_ERR_CPU_IDLE) {
+	while (is_interrupted(ret)) {
 		dev_dbg(dev, "%s(0x%x 0x%x 0x%x 0x%x) interrupted\n",
 			__func__, smcnr, a0, a1, a2);
-		if (ret == SM_ERR_CPU_IDLE)
+		if (is_cpu_idle(ret))
 			trusty_std_call_cpu_idle(s);
+#if defined(CONFIG_MTK_NEBULA_VM_SUPPORT) && defined(CONFIG_GZ_SMC_CALL_REMAP)
+		if (is_vm_interrupted(ret))
+			ret = trusty_std_call_helper(dev,
+						     SMC_SC_VM_RESTART_LAST,
+						     !is_nop_call(smcnr), 0, 0);
+		else
+			ret = trusty_std_call_helper(dev,
+						     SMC_SC_RESTART_LAST,
+						     !is_nop_call(smcnr), 0, 0);
+#else
 		ret = trusty_std_call_helper(dev, SMC_SC_RESTART_LAST, 0, 0, 0);
+#endif
 	}
 	dev_dbg(dev, "%s(0x%x 0x%x 0x%x 0x%x) returned 0x%x\n",
 		__func__, smcnr, a0, a1, a2, ret);
 
 	WARN_ONCE(ret == SM_ERR_PANIC, "trusty crashed");
 
-	if (smcnr == SMC_SC_NOP)
+	if (is_nop_call(smcnr))
 		complete(&s->cpu_idle_completion);
 	else
 		mutex_unlock(&s->smc_lock);
@@ -293,6 +369,80 @@ static void init_gz_ramconsole(struct device *dev)
 #endif
 
 #ifdef CONFIG_MT_TRUSTY_DEBUGFS
+#if defined(CONFIG_MTK_NEBULA_VM_SUPPORT) && defined(CONFIG_GZ_SMC_CALL_REMAP)
+ssize_t vmm_fast_add(struct device *dev, struct device_attribute *attr,
+			    char *buf)
+{
+	s32 a, b, c, ret;
+
+	get_random_bytes(&a, sizeof(s32));
+	a &= 0xFF;
+	get_random_bytes(&b, sizeof(s32));
+	b &= 0xFF;
+	get_random_bytes(&c, sizeof(s32));
+	c &= 0xFF;
+	ret = trusty_fast_call32(dev, SMC_FC_VM_TEST_ADD, a, b, c);
+	return scnprintf(buf, PAGE_SIZE, "%d + %d + %d = %d, %s\n", a, b, c, ret,
+		(a + b + c) == ret ? "PASS" : "FAIL");
+}
+
+DEVICE_ATTR(vmm_fast_add, S_IRUSR, vmm_fast_add, NULL);
+
+ssize_t vmm_fast_multiply(struct device *dev, struct device_attribute *attr,
+			    char *buf)
+{
+	s32 a, b, c, ret;
+
+	get_random_bytes(&a, sizeof(s32));
+	a &= 0xFF;
+	get_random_bytes(&b, sizeof(s32));
+	b &= 0xFF;
+	get_random_bytes(&c, sizeof(s32));
+	c &= 0xFF;
+	ret = trusty_fast_call32(dev, SMC_FC_VM_TEST_MULTIPLY, a, b, c);
+	return scnprintf(buf, PAGE_SIZE, "%d * %d * %d = %d, %s\n", a, b, c, ret,
+		(a * b * c) == ret ? "PASS" : "FAIL");
+}
+
+DEVICE_ATTR(vmm_fast_multiply, S_IRUSR, vmm_fast_multiply, NULL);
+
+ssize_t vmm_std_add(struct device *dev, struct device_attribute *attr,
+			    char *buf)
+{
+	s32 a, b, c, ret;
+
+	get_random_bytes(&a, sizeof(s32));
+	a &= 0xFF;
+	get_random_bytes(&b, sizeof(s32));
+	b &= 0xFF;
+	get_random_bytes(&c, sizeof(s32));
+	c &= 0xFF;
+	ret = trusty_std_call32(dev, SMC_SC_VM_TEST_ADD, a, b, c);
+	return scnprintf(buf, PAGE_SIZE, "%d + %d + %d = %d, %s\n", a, b, c, ret,
+		(a + b + c) == ret ? "PASS" : "FAIL");
+}
+
+DEVICE_ATTR(vmm_std_add, S_IRUSR, vmm_std_add, NULL);
+
+ssize_t vmm_std_multiply(struct device *dev, struct device_attribute *attr,
+			    char *buf)
+{
+	s32 a, b, c, ret;
+
+	get_random_bytes(&a, sizeof(s32));
+	a &= 0xFF;
+	get_random_bytes(&b, sizeof(s32));
+	b &= 0xFF;
+	get_random_bytes(&c, sizeof(s32));
+	c &= 0xFF;
+	ret = trusty_std_call32(dev, SMC_SC_VM_TEST_MULTIPLY, a, b, c);
+	return scnprintf(buf, PAGE_SIZE, "%d * %d * %d = %d, %s\n", a, b, c, ret,
+		(a * b * c) == ret ? "PASS" : "FAIL");
+}
+
+DEVICE_ATTR(vmm_std_multiply, S_IRUSR, vmm_std_multiply, NULL);
+#endif
+
 ssize_t trusty_add(struct device *dev, struct device_attribute *attr,
 			    char *buf)
 {
@@ -383,6 +533,24 @@ static void trusty_create_debugfs(struct trusty_state *s, struct device *pdev)
 {
 	int ret;
 
+#if defined(CONFIG_MTK_NEBULA_VM_SUPPORT) && defined(CONFIG_GZ_SMC_CALL_REMAP)
+	ret = device_create_file(pdev, &dev_attr_vmm_fast_add);
+	if (ret)
+		goto err_create_vmm_fast_add;
+
+	ret = device_create_file(pdev, &dev_attr_vmm_fast_multiply);
+	if (ret)
+		goto err_create_vmm_fast_multiply;
+
+	ret = device_create_file(pdev, &dev_attr_vmm_std_add);
+	if (ret)
+		goto err_create_vmm_std_add;
+
+	ret = device_create_file(pdev, &dev_attr_vmm_std_multiply);
+	if (ret)
+		goto err_create_vmm_std_multiply;
+#endif
+
 	ret = device_create_file(pdev, &dev_attr_trusty_add);
 	if (ret)
 		goto err_create_trusty_add;
@@ -427,6 +595,17 @@ err_create_trusty_threads:
 	device_remove_file(pdev, &dev_attr_trusty_threads);
 err_create_trusty_add:
 	device_remove_file(pdev, &dev_attr_trusty_add);
+
+#if defined(CONFIG_MTK_NEBULA_VM_SUPPORT) && defined(CONFIG_GZ_SMC_CALL_REMAP)
+err_create_vmm_std_multiply:
+	device_remove_file(pdev, &dev_attr_vmm_std_multiply);
+err_create_vmm_std_add:
+	device_remove_file(pdev, &dev_attr_vmm_std_add);
+err_create_vmm_fast_multiply:
+	device_remove_file(pdev, &dev_attr_vmm_fast_multiply);
+err_create_vmm_fast_add:
+	device_remove_file(pdev, &dev_attr_vmm_fast_add);
+#endif
 }
 
 #endif /* CONFIG_MT_TRUSTY_DEBUGFS */

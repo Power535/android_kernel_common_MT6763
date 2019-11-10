@@ -51,7 +51,7 @@
 static unsigned int order_gfp_flags[] = {
 	(GFP_HIGHUSER | __GFP_ZERO | __GFP_NOWARN | __GFP_NORETRY) & ~__GFP_RECLAIM,
 	(GFP_HIGHUSER | __GFP_ZERO | __GFP_NOWARN | __GFP_NORETRY) & ~__GFP_DIRECT_RECLAIM,
-	(GFP_HIGHUSER | __GFP_ZERO | __GFP_NOWARN)
+	(GFP_HIGHUSER | __GFP_ZERO)
 };
 
 static int order_to_index(unsigned int order)
@@ -117,6 +117,21 @@ static void free_buffer_page(struct ion_system_heap *heap,
 			     struct ion_buffer *buffer, struct page *page, unsigned int order) {
 	bool cached = ion_buffer_cached(buffer);
 
+#ifdef CONFIG_MTK_ION_CAM_POOL_DIS
+	if ((!cached) && (!(buffer->private_flags & ION_PRIV_FLAG_SHRINKER_FREE)) &&
+	    (heap->heap.id != ION_HEAP_TYPE_MULTIMEDIA_FOR_CAMERA)) {
+		struct ion_page_pool *pool = heap->pools[order_to_index(order)];
+
+		ion_page_pool_free(pool, page);
+	} else if (cached && (!(buffer->private_flags & ION_PRIV_FLAG_SHRINKER_FREE)) &&
+				(heap->heap.id != ION_HEAP_TYPE_MULTIMEDIA_FOR_CAMERA)) {
+		struct ion_page_pool *pool = heap->cached_pools[order_to_index(order)];
+
+		ion_page_pool_free(pool, page);
+	} else {
+		__free_pages(page, order);
+	}
+#else
 	if (!cached && !(buffer->private_flags & ION_PRIV_FLAG_SHRINKER_FREE)) {
 		struct ion_page_pool *pool = heap->pools[order_to_index(order)];
 
@@ -128,6 +143,7 @@ static void free_buffer_page(struct ion_system_heap *heap,
 	} else {
 		__free_pages(page, order);
 	}
+#endif
 }
 
 static struct page_info *alloc_largest_available(struct ion_system_heap *heap,
@@ -1017,6 +1033,7 @@ long ion_mm_ioctl(struct ion_client *client, unsigned int cmd, unsigned long arg
 				if (param.config_buffer_param.module_id < 0) {
 					IONMSG("ION_MM_CONFIG_BUFFER module_id error:%d-%d,name %16.s!!!\n",
 					       param.config_buffer_param.module_id, buffer->heap->type, client->name);
+					ion_drv_put_kernel_handle(kernel_handle);
 					return -EFAULT;
 				}
 				if (((buffer_info->MVA == 0) && (param.mm_cmd == ION_MM_CONFIG_BUFFER)) ||

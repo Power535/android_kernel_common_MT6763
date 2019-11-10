@@ -85,6 +85,7 @@ unsigned long pmem_user_v2p_video(unsigned long va)
 		return pa;
 	}
 
+	pte_unmap(pte);
 	MODULE_MFV_PR_ERR("[ERROR] pmem_user_v2p(), va=0x%lx, pte invalid!\n", va);
 	return 0;
 }

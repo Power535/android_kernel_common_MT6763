@@ -647,16 +647,16 @@ _DumpPageArray(struct page **pagearray, IMG_UINT32 uiPagesToPrint)
 	IMG_UINT32 i;
 	if (pagearray)
 	{
-		printk("Array %p:\n", pagearray);
+		pr_info("Array %p:\n", pagearray);
 		for (i = 0; i < uiPagesToPrint; i++)
 		{
-			printk("%p | ", (pagearray)[i]);
+			pr_info("%p | ", (pagearray)[i]);
 		}
-		printk("\n");
+		pr_info("\n");
 	}
 	else
 	{
-		printk("Array is NULL:\n");
+		pr_info("Array is NULL:\n");
 	}
 #else
 	PVR_UNREFERENCED_PARAMETER(pagearray);
@@ -677,12 +677,12 @@ _DumpPoolStructure(void)
 	IMG_UINT32  j;
 	IMG_UINT32 *puiCounter;
 
-	printk("\n");
+	pr_info("\n");
 	/* Empty all pools */
 	for (j = 0; j < PHYSMEM_OSMEM_NUM_OF_POOLS; j++)
 	{
 
-		printk("pool = %u \n", j);
+		pr_info("pool = %u \n", j);
 
 		/* Get the correct list for this caching mode */
 		if (!_GetPoolListHead(g_aui32CPUCacheFlags[j], &psPoolHead, &puiCounter))
@@ -695,9 +695,9 @@ _DumpPoolStructure(void)
 								 psPoolHead,
 								 sPagePoolItem)
 		{
-			printk("%u | ", psPagePoolEntry->uiItemsRemaining);
+			pr_info("%u | ", psPagePoolEntry->uiItemsRemaining);
 		}
-		printk("\n");
+		pr_info("\n");
 	}
 #endif
 }

@@ -37,6 +37,7 @@ CONFIG_BLK_DEV_BSG,COMMON,,,N,N,N,N,N,N,N,N,N,N
 CONFIG_BLK_DEV_DM,COMMON,,,y,y,y,y,y,y,y,y,y,y
 CONFIG_BLK_DEV_LOOP,COMMON,,,y,y,y,y,y,y,y,y,y,y
 CONFIG_BLK_DEV_MD,PROJECT,pangyen.chen,,,,,,,,,,,
+CONFIG_BLK_DEV_RAM,COMMON,,,y,y,y,y,y,y,y,y,y,y
 CONFIG_BLK_DEV_SD,COMMON,,,y,y,y,y,y,y,y,y,y,y
 CONFIG_BOUNCE,PLATFORM,miles.chen,,N,N,N,N,N,X,X,N,X,N
 CONFIG_BRIDGE,COMMON,,,y,y,y,y,y,y,y,y,y,y
@@ -69,6 +70,8 @@ CONFIG_CMA,PROJECT,Miles.Chen,Specific usage,,,,,,,,,,
 CONFIG_CMDLINE,COMMON,,,"console=tty0 console=ttyMT3,921600n1 root=/dev/ram vmalloc=496M slub_max_order=0 slub_debug=O ","console=tty0 console=ttyMT3,921600n1 root=/dev/ram vmalloc=496M slub_max_order=0 slub_debug=O ","console=tty0 console=ttyMT3,921600n1 root=/dev/ram vmalloc=496M slub_max_order=0 slub_debug=O ","console=tty0 console=ttyMT3,921600n1 root=/dev/ram vmalloc=496M slub_max_order=0 slub_debug=O ","console=tty0 console=ttyMT3,921600n1 root=/dev/ram vmalloc=496M slub_max_order=0 slub_debug=O ","console=tty0 console=ttyMT3,921600n1 root=/dev/ram vmalloc=496M slub_max_order=0 slub_debug=O ","console=tty0 console=ttyMT3,921600n1 root=/dev/ram vmalloc=496M slub_max_order=0 slub_debug=O ","console=tty0 console=ttyMT3,921600n1 root=/dev/ram vmalloc=496M slub_max_order=0 slub_debug=O ","console=tty0 console=ttyMT3,921600n1 root=/dev/ram vmalloc=496M slub_max_order=0 slub_debug=O ","console=tty0 console=ttyMT3,921600n1 root=/dev/ram vmalloc=496M slub_max_order=0 slub_debug=O "
 CONFIG_COMPAT,PLATFORM,,,X,y,y,y,y,X,X,y,X,y
 CONFIG_CORE_DUMP_DEFAULT_ELF_HEADERS,COMMON,,,N,N,N,N,N,N,N,N,N,N
+CONFIG_CPU_FREQ_TIMES,COMMON,,,y,y,y,y,y,y,y,y,y,y
+CONFIG_CPU_FREQ_DEFAULT_GOV_INTERACTIVE,,,y,y,y,y,y,N,N,N,N,N
 CONFIG_CROSS_COMPILE,PLATFORM,,,arm-eabi-,aarch64-linux-android-,aarch64-linux-android-,aarch64-linux-android-,aarch64-linux-android-,arm-eabi-,arm-eabi-,aarch64-linux-android-,arm-eabi-,aarch64-linux-android-
 CONFIG_CRYPTO_AES_ARM64_CE_BLK,PLATFORM,Calvin.Liao,,X,y,y,y,y,X,X,y,X,y
 CONFIG_CRYPTO_AES_ARM64_CE,PLATFORM,Calvin.Liao,,X,y,y,y,y,X,X,y,X,y
@@ -145,8 +148,6 @@ CONFIG_DEBUG_PREEMPT,USER,YT.Chang,,X,X,X,N,N,N,N,N,N,N
 CONFIG_DEBUG_SECTION_MISMATCH,USER;PROJECT,jades.shih,debug section mismatch,O,O,O,O,O,O,O,O,O,O
 CONFIG_DEBUG_SPINLOCK,USER;PROJECT,kobe-cp.wu,new config af2e2e13088253076dd2e39493509b552944b9f3,X(USER),X(USER),X(USER),X(USER),X(USER),X(USER),X(USER),X(USER),X(USER),X(USER)
 CONFIG_DEBUG_STACK_USAGE,COMMON,jades.shih,,X,X,X,X,X,X,X,X,X,X
-CONFIG_DEBUG_OBJECTS,USER;PROJECT,,,X,X,X,X,X,X,X,X,X,X
-CONFIG_DEBUG_OBJECTS_TIMERS,USER;PROJECT,chang-an.chen,,,,,,,,,,,
 CONFIG_DEVKMEM,COMMON,miles.chen,,N,N,N,N,N,N,N,N,N,N
 CONFIG_DEVMEM,COMMON,miles.chen,,N,N,N,N,N,N,N,N,N,N
 CONFIG_DISABLE_CPU_SCHED_DOMAIN_BALANCE,COMMON,yt.chang,new config in this commit 415c6abc1901c852f7db422fa1f0cac2e9a6e1ef,X,X,X,X,X,X,X,X,X,X
@@ -229,6 +230,7 @@ CONFIG_HID_THRUSTMASTER,COMMON,,,y,y,y,y,y,y,y,y,y,y
 CONFIG_HID_TOPSEED,COMMON,,,y,y,y,y,y,y,y,y,y,y
 CONFIG_HID_TWINHAN,COMMON,,,y,y,y,y,y,y,y,y,y,y
 CONFIG_HID_ZEROPLUS,COMMON,,,y,y,y,y,y,y,y,y,y,y
+CONFIG_HIE_DEBUG,USER,stanley.chu,new config in this commit 6c697a7cee8b0c1c4ea7cc55617bc1580140db87,X,X,X,X,X,X,N,N,X,X
 CONFIG_HIGHMEM,PLATFORM,,,y,X,X,X,X,y,y,X,y,X
 CONFIG_HIGHPTE,COMMON,miles.chen,,N,N,N,N,N,N,N,N,N,N
 CONFIG_HIGHPTE,PLATFORM,miles.chen,,N,X,X,X,X,N,N,X,N,X
@@ -329,7 +331,6 @@ CONFIG_MT6370_PMU_CHARGER_TYPE_DETECT,PROJECT,,,,,,O,,,,O,,O
 CONFIG_MT6370_PMU_DSV,PROJECT,wilma.wu,,O,O,X,O,O,,,O,,O
 CONFIG_MT6370_PMU_FLED,PROJECT,wilma.wu,,O,O,X,O,O,,,O,,O
 CONFIG_MT6370_PMU_LDO,PROJECT,wilma.wu,,O,O,X,O,O,,,O,,O
-CONFIG_MT6771_QUERY_PCB_ID,PLATFORM,luhua.xu,,X,X,X,X,X,X,y,y,X,X
 CONFIG_MTD_BLOCK,COMMON,,,X,X,X,X,X,X,X,X,X,X
 CONFIG_MTD,COMMON,,,X,X,X,X,X,X,X,X,X,X
 CONFIG_MTD_NAND_IDS,COMMON,,,X,X,X,X,X,X,X,X,X,X
@@ -381,7 +382,7 @@ CONFIG_MTK_CAMERA_ISP_OWE_SUPPORT,PLATFORM,johnson-ch.chiu,,X,X,y,X,y,X,y,y,y,y
 CONFIG_MTK_CAMERA_ISP_RSC_SUPPORT,PLATFORM,johnson-ch.chiu,,X,X,y,X,y,X,y,y,y,y
 CONFIG_MTK_CAMERA_ISP_TSF_SUPPORT,PLATFORM,Hung-Wen.Hsieh,,X,X,y,y,y,X,y,y,y,y
 CONFIG_MTK_CAMERA_ISP_WPE_SUPPORT,PLATFORM,MH.hsiao,,X,X,y,X,X,X,y,y,y,y
-CONFIG_MTK_CAM_SECURITY_SUPPORT,PROJECT,yicheng.chen,new config in this commit I4eb3887f894b599d872189b154c4f063ea85cd81,,,,,,,,,,
+CONFIG_MTK_CAM_SECURITY_SUPPORT,PROJECT,yicheng.chen,,,,,,,
 CONFIG_MTK_CCCI_DEVICES,COMMON,yanbin.ren,new config in this commit 9715b038cd89c33b3acb9a75a29652347cccc65c,X,X,X,X,X,X,X,X,X,X
 CONFIG_MTK_CCU,PROJECT,kuanfu.yeh,,N,y,y,O,y,N,y,y,y,y
 CONFIG_MTK_CHIP,COMMON,Nora.Chang,,y,y,y,y,y,y,y,y,y,y
@@ -440,7 +441,7 @@ CONFIG_MTK_DRS,PROJECT,Miles.Chen,,N,N,N,y,y,,,y,,y
 CONFIG_MTK_DTBO_FEATURE,PROJECT,chia-hao.hsu,,X,X,X,X,X,,,X,,X
 CONFIG_MTK_DUAL_CHARGER_SUPPORT,PROJECT,elvin.lin,,,,,,,,,,,
 CONFIG_MTK_DUM_CHAR,PROJECT,chienwei.chang,,,,,,,,,,,
-CONFIG_MTK_DYNAMIC_FPS_FRAMEWORK_SUPPORT,PLATFORM,jih-cheng.chiu,,X,X,y,y,y,y,y,y,y,y
+CONFIG_MTK_DYNAMIC_FPS_FRAMEWORK_SUPPORT,PLATFORM,jih-cheng.chiu,,X,X,X,X,X,X,X,X,X,X
 CONFIG_MTK_DYNAMIC_FPS_SUPPORT,PROJECT,jih-cheng.chiu,,X,X,O,,,,,,,
 CONFIG_MTK_ECCCI_C2K,PROJECT,wenbo.ning,new config in this commit 53dd74ddebad6dd1d6c646f4f907945bfeb86f73,,,,,,,,,,
 CONFIG_MTK_ECCCI_DRIVER,PLATFORM,chao.song,,y,y,y,y,y,y,y,y,y,y
@@ -458,14 +459,13 @@ CONFIG_MTK_EMMC_CQ_SUPPORT,PROJECT,sophie.wang,new config in this commit ce3bff2
 CONFIG_MTK_EMMC_SUPPORT_OTP,PROJECT,weiping.zhang,,,,,,,,,,,
 CONFIG_MTK_EMMC_SUPPORT,PROJECT,weiping.zhang,,,,,,,,,,,
 CONFIG_MTK_ENABLE_GENIEZONE,PROJECT,coboy.chen,,,,,,,,,,,
+CONFIG_MTK_NEBULA_VM_SUPPORT,PROJECT,coboy.chen,,,,,,,,,,,
 CONFIG_MTK_ENABLE_MD2,COMMON,yanbin.ren,new config in this commit 9715b038cd89c33b3acb9a75a29652347cccc65c,X,X,X,X,X,X,X,X,X,X
 CONFIG_MTK_ENG_BUILD,USER,,,X,X,X,X,X,X,X,X,X,X
 CONFIG_MTK_EXTBUCK,PROJECT,vend_jeff_chang001,,X,X,X,,,,,,,
 CONFIG_MTK_EXTERNAL_CHARGER_TYPE_DETECT,PROJECT,marvin.lin,,,,,,,,,,,
 CONFIG_MTK_FAT_ON_NAND,PROJECT,chienwei.chang,,,,,,,,,,,
 CONFIG_MTK_FB,COMMON,,,y,y,y,y,y,y,y,y,y,y
-CONFIG_MTK_FD_LEAK_DETECT,USER;PROJECT,yuxian.xu,,O,O,O,O,O,O,O,O,O,O
-CONFIG_MTK_FD_LEAK_SPECIFIC_DEBUG,PROJECT,yuxian.xu,,O,O,O,O,O,O,O,O,O,O
 CONFIG_MTK_FINGERPRINT_SELECT,PROJECT,luhua.xu,new config in this commit ff5fd1753a830032f4c8a5d075c4b2de17e563bc,,,,,,,,,,
 CONFIG_MTK_FINGERPRINT_SUPPORT,PROJECT,luhua.xu,new config in this commit ff5fd1753a830032f4c8a5d075c4b2de17e563bc,,,,,,,,,,
 CONFIG_MTK_FIQ_CACHE,PLATFORM,mars.cheng,,X,X,y,X,X,X,X,X,X,X
@@ -473,6 +473,7 @@ CONFIG_MTK_FLASHLIGHT,COMMON,simon-tch.wang,,y,y,y,y,y,y,y,y,y,y
 CONFIG_MTK_FLASHLIGHT_DLPT,COMMON,simon-tch.wang,,y,y,y,y,y,y,y,y,y,y
 CONFIG_MTK_FLASHLIGHT_HA7109,PROJECT,roger-hy.wang,,X,X,X,y,y,X,X,y,X,y
 CONFIG_MTK_FLASHLIGHT_LM3642,PROJECT,roger-hy.wang,,X,X,X,y,y,X,X,y,X,y
+CONFIG_MTK_FLASHLIGHT_RT4509,PROJECT,roger-hy.wang,,X,X,X,y,y,X,X,y,X,y
 CONFIG_MTK_FLASHLIGHT_LM3643,PROJECT,simon-tch.wang,,y,y,X,X,X,X,X,X,X,X
 CONFIG_MTK_FLASHLIGHT_MT6336,PROJECT,simon-tch.wang,,X,X,y,X,X,X,X,X,X,X
 CONFIG_MTK_FLASHLIGHT_MT6370,PROJECT,simon-tch.wang,,X,X,X,y,y,X,X,y,X,y
@@ -490,7 +491,8 @@ CONFIG_MTK_FPSGO_FBT_GAME,PROJECT,julius.lo,,,,,,,,,,,
 CONFIG_MTK_FPSGO_FBT_UX,PROJECT,poting.chen,,,,,,,,,,,
 CONFIG_MTK_FPSGO_FSTB,PROJECT,poting.chen,,,,,,,,,,,
 CONFIG_MTK_FPSGO_MULTI_STAGE_RESCUE,PROJECT,chiayu.ku,,,,,,,,,,,
-CONFIG_MTK_FPSGO,PROJECT,julius.lo,,,,,,,,,,,
+CONFIG_MTK_FPSGO_V3,PROJECT,poting.chen,,,,,,,,,,,
+CONFIG_MTK_FPSGO,PROJECT,poting.chen,,,,,,,,,,,
 CONFIG_MTK_FREQ_HOPPING,COMMON,konrad.wei,,y,y,y,y,y,y,y,y,y,y
 CONFIG_MTK_FTRACE_DEFAULT_ENABLE,USER;PROJECT,neil.yang,,,,,,,,,,,
 CONFIG_MTK_GAMEROTVECHUB,PROJECT,weiqi.fu,new config in this commit 6cf72299191fe832dffff96cd9233bcf981b52a0,,,,,,,,,,
@@ -504,7 +506,7 @@ CONFIG_MTK_GPS_EMI,PROJECT,Heiping.Lei,new config in this commit 89e353c38891333
 CONFIG_MTK_GPS_REGISTER_SETTING,PROJECT,Heiping.Lei,new config in this commit bfc2f2ac84b4e959639353664279a181d4b095d8,,,,,,,,,,
 CONFIG_MTK_GPS_SUPPORT,PROJECT,Heiping.Lei,,,,,,,,,,,
 CONFIG_MTK_GPT_SCHEME_SUPPORT,PROJECT,jimin.wang,,,,,,,,,,,
-CONFIG_MTK_GPU_COMMON_DVFS_SUPPORT,PLATFORM,Yu-fu.Kao,,y,y,y,y,y,y,y,y,y,y
+CONFIG_MTK_GPU_COMMON_DVFS_SUPPORT,PROJECT,Yu-fu.Kao,,y,y,y,y,y,y,y,y,y,y
 CONFIG_MTK_GPU_SPM_DVFS_SUPPORT,COMMON,yu-fu.kao,new config in this commit 25c58375709ade9927b8c1efdd93b182c51a2d88,X,X,X,X,X,X,X,X,X,X
 CONFIG_MTK_GPU_SUPPORT,PROJECT,victor.hsu,,,,,,,,,,,
 CONFIG_MTK_GPU_VERSION,PROJECT,Yu-fu.Kao,type PROJECT should be PLATFORM,,,,,,,,,,
@@ -529,6 +531,7 @@ CONFIG_MTK_INPKHUB,PROJECT,qiangming.xia,new config in this commit e5afb39d5bc74
 CONFIG_MTK_INTERNAL,PROJECT,junzhi.zhao,,,,,y,y,,,y,,y
 CONFIG_MTK_IO_BOOST,PLATFORM,stanley.chu,finetune for performance,X,X,X,X,X,X,y,y,X,X
 CONFIG_MTK_ION,COMMON,youhua.li,new config in this commit 30f50f4e2f5b4c1996816cc4997e5c6b86d28386,y,y,y,y,y,y,y,y,y,y
+CONFIG_MTK_ION_CAM_POOL_DIS,PROJECT,chao.hao,,,,,,,,,,
 CONFIG_MTK_IPV6_VZW,PROJECT,Xin.Xu,for customer project only,O,O,O,O,O,O,O,O,O,O
 CONFIG_MTK_IRAT_SUPPORT,PROJECT,anny.hu,,,,,,,,,,,
 CONFIG_MTK_IRIS_SUPPORT,PROJECT,yicheng.chen,new config in this commit Ie6ddb08406104d35a595ed9b83593cb455f91dca,,,,,,,,,,
@@ -634,7 +637,7 @@ CONFIG_MTK_PWM,PROJECT,qiangming.xia,not required if not used,,,,,,,,,,
 CONFIG_MTK_QOS_SUPPORT,PLATFORM,Cheng-En.Chung,DVFS related options,X,X,X,X,X,X,y,y,y,y
 CONFIG_MTK_RAM_CONSOLE_ADDR,PLATFORM,Ji.Zhang,,0x0011D000,0x0011D000,0x0012D000,0x0011D000,0x0011D000,0x0010DC00,0x0011D000,0x0011D000,0x0011D000,0x0011D000
 CONFIG_MTK_RAM_CONSOLE,COMMON,Ji.Zhang,,y,y,y,y,y,y,y,y,y,y
-CONFIG_MTK_RAM_CONSOLE_DRAM_ADDR,PLATFORM,Ji.Zhang,,0x47C80000,0x47C80000,0x44400000,0x54400000,0x54400000,0x44400000,0x54400000,0x54400000,0x54400000,0x54400000
+CONFIG_MTK_RAM_CONSOLE_DRAM_ADDR,PLATFORM,Ji.Zhang,,0x44400000,0x44400000,0x44400000,0x54400000,0x54400000,0x44400000,0x54400000,0x54400000,0x54400000,0x54400000
 CONFIG_MTK_RAM_CONSOLE_DRAM_SIZE,COMMON,Ji.Zhang,,0x10000,0x10000,0x10000,0x10000,0x10000,0x10000,0x10000,0x10000,0x10000,0x10000
 CONFIG_MTK_RAM_CONSOLE_SIZE,PLATFORM,Ji.Zhang,,0x800,0x800,0x800,0x800,0x800,0x800,0x800,0x800,0x800,0x800
 CONFIG_MTK_RAM_CONSOLE_USING_DRAM,PLATFORM,Ji.Zhang,,X,X,X,X,X,X,X,X,X,X
@@ -757,7 +760,6 @@ CONFIG_PHYS_OFFSET,PLATFORM,miles.chen,,0x40000000,X,X,X,X,X,X,X,X,X
 CONFIG_PM_AUTOSLEEP,COMMON,,,y,y,y,y,y,y,y,y,y,y
 CONFIG_PM_DEVFREQ,PLATFORM,Howard.Hsu,DVFS related options,X,X,X,X,X,X,y,y,y,y
 CONFIG_POWER_RESET,PLATFORM,,,X,X,X,X,X,X,X,X,X,X
-CONFIG_POWER_SUPPLY,PLATFORM,,,X,X,X,X,X,y,y,X,y,X
 CONFIG_PREEMPT,COMMON,,,y,y,y,y,y,y,y,y,y,y
 CONFIG_PREEMPT_MONITOR,USER;PROJECT,kobe-cp.wu,,X(USER),X(USER),X(USER),X(USER),X(USER),X(USER),X(USER),X(USER),X(USER),X(USER)
 CONFIG_PRINTK_TIME,COMMON,,,y,y,y,y,y,y,y,y,y,y
@@ -766,7 +768,7 @@ CONFIG_PROVE_LOCKING,USER;PROJECT,kobe-cp.wu,,X,X,X,X,X,X,X,X,X,X
 CONFIG_PSTORE,COMMON,ji.zhang,,y,y,y,y,y,y,y,y,y,y
 CONFIG_PSTORE_CONSOLE,COMMON,ji.zhang,,y,y,y,y,y,y,y,y,y,y
 CONFIG_PSTORE_CONSOLE_SIZE,PLATFORM,ji.zhang,,0x10000,0x10000,0x10000,0x40000,0x40000,0x40000,0x40000,0x40000,0x40000,0x40000
-CONFIG_PSTORE_MEM_ADDR,PLATFORM,ji.zhang,,0x47C90000,0x47C90000,0x44410000,0x54410000,0x54410000,0x44410000,0x54410000,0x54410000,0x54410000,0x54410000
+CONFIG_PSTORE_MEM_ADDR,PLATFORM,ji.zhang,,0x44410000,0x44410000,0x44410000,0x54410000,0x54410000,0x44410000,0x54410000,0x54410000,0x54410000,0x54410000
 CONFIG_PSTORE_MEM_SIZE,COMMON,ji.zhang,,0xe0000,0xe0000,0xe0000,0xe0000,0xe0000,0xe0000,0xe0000,0xe0000,0xe0000,0xe0000
 CONFIG_PSTORE_PMSG,COMMON,ji.zhang,,y,y,y,y,y,y,y,y,y,y
 CONFIG_PSTORE_PMSG_SIZE,COMMON,ji.zhang,,0x10000,0x10000,0x10000,0x10000,0x10000,0x10000,0x10000,0x10000,0x10000,0x10000
@@ -953,4 +955,5 @@ CONFIG_ZRAM_LZ4K_COMPRESS,PROJECT,Chinwen.Chang,,O,O,O,,,,,,,
 CONFIG_ZRAM,PROJECT,Chinwen.Chang,,O,y,y,,,,,,,
 CONFIG_ZSMALLOC,COMMON,,,y,y,y,y,y,y,y,y,y,y
 CONFIG_ZSM,PROJECT,Robbin.Chiu,new config 84a52cb60725192d8ae0c80b58c363c35484cfd4,,,,,,,,,,
-CONFIG_USB_MU3D_DRV_36BIT,PROJECT,Eddie.Hung,U3 HW support 36-bit,,,,,,,,,,
+CONFIG_SECURITY_SELINUX_DEVELOP,USER;PROJECT,colin.lee,,,,,,,,,,,
+

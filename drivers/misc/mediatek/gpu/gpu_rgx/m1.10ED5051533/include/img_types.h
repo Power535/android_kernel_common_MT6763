@@ -141,7 +141,6 @@ typedef IMG_CHAR const* IMG_PCCHAR;
 #endif
 
 #if defined(LINUX) && defined(__KERNEL__)
-/* prints the function name when used with printk */
 #define IMG_PFN_FMTSPEC "%pf"
 #else
 #define IMG_PFN_FMTSPEC "%p"

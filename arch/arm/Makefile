@@ -11,6 +11,10 @@
 # Copyright (C) 1995-2001 by Russell King
 subdir-ccflags-y += -Werror
 
+ifdef CONFIG_THUMB2_KERNEL
+LD              := $(CROSS_COMPILE)ld.bfd
+endif
+
 # Ensure linker flags are correct
 LDFLAGS		:=
 

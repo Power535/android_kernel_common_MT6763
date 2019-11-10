@@ -173,7 +173,7 @@ adf_fbdev_alloc_buffer(struct adf_fbdev_interface *interface)
 	 * being unloaded if the buffer is passed around by dmabuf.
 	 */
 	if (!try_module_get(THIS_MODULE)) {
-		pr_err("try_module_get(THIS_MODULE) failed\n");
+		pr_info("try_module_get(THIS_MODULE) failed\n");
 		kfree(fbdev_dmabuf);
 		return ERR_PTR(-EFAULT);
 	}
@@ -187,7 +187,7 @@ adf_fbdev_alloc_buffer(struct adf_fbdev_interface *interface)
 		    fbdev_dmabuf->sg_table.nents, i) {
 		page = vmalloc_to_page(fbdev_dmabuf->vaddr + offset);
 		if (!page) {
-			pr_err("Failed to map fbdev vaddr to pages\n");
+			pr_info("Failed to map fbdev vaddr to pages\n");
 			kfree(fbdev_dmabuf);
 			return ERR_PTR(-EFAULT);
 		}
@@ -255,7 +255,7 @@ static int adf_fbdev_d_mmap(struct dma_buf *dmabuf, struct vm_area_struct *vma)
 		    fbdev_dmabuf->sg_table.nents, i) {
 		page = sg_page(sg);
 		if (!page) {
-			pr_err("Failed to retrieve pages\n");
+			pr_info("Failed to retrieve pages\n");
 			return -EFAULT;
 		}
 		remainder = vma->vm_end - addr;
@@ -396,7 +396,7 @@ static void adf_fbdev_post(struct adf_device *dev, struct adf_post *cfg,
 		return;
 
 	if (!lock_fb_info(device->fb_info)) {
-		pr_err("Failed to lock fb_info structure.\n");
+		pr_info("Failed to lock fb_info structure.\n");
 		return;
 	}
 
@@ -417,11 +417,11 @@ static void adf_fbdev_post(struct adf_device *dev, struct adf_post *cfg,
 
 		err = fb_set_var(device->fb_info, &new_var);
 		if (err)
-			pr_err("fb_set_var failed (err=%d)\n", err);
+			pr_info("fb_set_var failed (err=%d)\n", err);
 	} else {
 		err = fb_pan_display(device->fb_info, &new_var);
 		if (err)
-			pr_err("fb_pan_display failed (err=%d)\n", err);
+			pr_info("fb_pan_display failed (err=%d)\n", err);
 	}
 
 	console_unlock();
@@ -461,7 +461,7 @@ adf_fbdev_release2(struct adf_obj *obj, struct inode *inode, struct file *file)
 	 */
 	release_fence = adf_device_post(&dev->base, NULL, 0, NULL, 0, NULL, 0);
 	if (IS_ERR_OR_NULL(release_fence)) {
-		pr_err("Failed to queue null flip command (err=%d).\n",
+		pr_info("Failed to queue null flip command (err=%d).\n",
 		       (int)PTR_ERR(release_fence));
 		return;
 	}
@@ -532,19 +532,19 @@ adf_fbdev_alloc_simple_buffer(struct adf_interface *intf, u16 w, u16 h,
 	struct adf_fbdev_dmabuf *fbdev_dmabuf;
 
 	if (w != var->xres) {
-		pr_err("Simple alloc request w=%u does not match w=%u.\n",
+		pr_info("Simple alloc request w=%u does not match w=%u.\n",
 		       w, var->xres);
 		return -EINVAL;
 	}
 
 	if (h != var->yres) {
-		pr_err("Simple alloc request h=%u does not match h=%u.\n",
+		pr_info("Simple alloc request h=%u does not match h=%u.\n",
 		       h, var->yres);
 		return -EINVAL;
 	}
 
 	if (format != adf_fbdev_supported_format) {
-		pr_err("Simple alloc request f=0x%x does not match f=0x%x.\n",
+		pr_info("Simple alloc request f=0x%x does not match f=0x%x.\n",
 		       format, adf_fbdev_supported_format);
 		return -EINVAL;
 	}
@@ -638,12 +638,12 @@ static bool adf_fbdev_flip_possible(struct fb_info *fb_info)
 
 	if (!fb_info->fix.xpanstep && !fb_info->fix.ypanstep &&
 	    !fb_info->fix.ywrapstep) {
-		pr_err("The fbdev device detected does not support ypan/ywrap.\n");
+		pr_info("The fbdev device detected does not support ypan/ywrap.\n");
 		return false;
 	}
 
 	if ((fb_info->fix.line_length * var.yres) % PAGE_SIZE != 0) {
-		pr_err("Line length (in bytes) x yres is not a multiple of page size.\n");
+		pr_info("Line length (in bytes) x yres is not a multiple of page size.\n");
 		return false;
 	}
 
@@ -651,19 +651,19 @@ static bool adf_fbdev_flip_possible(struct fb_info *fb_info)
 	if (var.yres * NUM_PREFERRED_BUFFERS <= var.yres_virtual)
 		return true;
 
-	pr_err("No buffer space for flipping; asking for more.\n");
+	pr_info("No buffer space for flipping; asking for more.\n");
 
 	var.activate = FB_ACTIVATE_NOW;
 	var.yres_virtual = var.yres * NUM_PREFERRED_BUFFERS;
 
 	err = fb_set_var(fb_info, &var);
 	if (err) {
-		pr_err("fb_set_var failed (err=%d).\n", err);
+		pr_info("fb_set_var failed (err=%d).\n", err);
 		return false;
 	}
 
 	if (var.yres * NUM_PREFERRED_BUFFERS > var.yres_virtual) {
-		pr_err("Failed to obtain additional buffer space.\n");
+		pr_info("Failed to obtain additional buffer space.\n");
 		return false;
 	}
 
@@ -674,8 +674,8 @@ static bool adf_fbdev_flip_possible(struct fb_info *fb_info)
 	 */
 	if (fb_info->fix.smem_len < fb_info->fix.line_length *
 				    var.yres_virtual) {
-		pr_err("'fix' not re-allocated with sufficient buffer space.\n");
-		pr_err("Check NUM_PREFERRED_BUFFERS (%u) is as intended.\n",
+		pr_info("'fix' not re-allocated with sufficient buffer space.\n");
+		pr_info("Check NUM_PREFERRED_BUFFERS (%u) is as intended.\n",
 		       NUM_PREFERRED_BUFFERS);
 		return false;
 	}
@@ -699,9 +699,9 @@ static int __init init_adf_fbdev(void)
 
 	fb_info = registered_fb[0];
 	if (!fb_info) {
-		pr_err("No Linux framebuffer (fbdev) device is registered!\n");
-		pr_err("Check you have a framebuffer driver compiled into your kernel\n");
-		pr_err("and that it is enabled on the cmdline.\n");
+		pr_info("No Linux framebuffer (fbdev) device is registered!\n");
+		pr_info("Check you have a framebuffer driver compiled into your kernel\n");
+		pr_info("and that it is enabled on the cmdline.\n");
 		goto err_out;
 	}
 
@@ -712,14 +712,14 @@ static int __init init_adf_fbdev(void)
 
 	/* Filter out broken FB devices */
 	if (!fb_info->fix.smem_len || !fb_info->fix.line_length) {
-		pr_err("The fbdev device detected had a zero smem_len or line_length,\n");
-		pr_err("which suggests it is a broken driver.\n");
+		pr_info("The fbdev device detected had a zero smem_len or line_length,\n");
+		pr_info("which suggests it is a broken driver.\n");
 		goto err_unlock;
 	}
 
 	if (fb_info->fix.type != FB_TYPE_PACKED_PIXELS ||
 	    fb_info->fix.visual != FB_VISUAL_TRUECOLOR) {
-		pr_err("The fbdev device detected is not truecolor with packed pixels.\n");
+		pr_info("The fbdev device detected is not truecolor with packed pixels.\n");
 		goto err_unlock;
 	}
 
@@ -743,7 +743,7 @@ static int __init init_adf_fbdev(void)
 			   fb_info->var.blue.offset  == 16) {
 			adf_fbdev_supported_format = DRM_FORMAT_RGBA8888;
 		} else {
-			pr_err("The fbdev device detected uses an unrecognized 32bit pixel format (%u/%u/%u, %u/%u/%u)\n",
+			pr_info("The fbdev device detected uses an unrecognized 32bit pixel format (%u/%u/%u, %u/%u/%u)\n",
 			       fb_info->var.red.length,
 			       fb_info->var.green.length,
 			       fb_info->var.blue.length,
@@ -759,7 +759,7 @@ static int __init init_adf_fbdev(void)
 		    fb_info->var.red.offset   != 11 ||
 		    fb_info->var.green.offset != 5  ||
 		    fb_info->var.blue.offset  != 0) {
-			pr_err("The fbdev device detected uses an unrecognized 16bit pixel format (%u/%u/%u, %u/%u/%u)\n",
+			pr_info("The fbdev device detected uses an unrecognized 16bit pixel format (%u/%u/%u, %u/%u/%u)\n",
 			       fb_info->var.red.length,
 			       fb_info->var.green.length,
 			       fb_info->var.blue.length,
@@ -770,7 +770,7 @@ static int __init init_adf_fbdev(void)
 		}
 		adf_fbdev_supported_format = DRM_FORMAT_BGR565;
 	} else {
-		pr_err("The fbdev device detected uses an unsupported bpp (%u).\n",
+		pr_info("The fbdev device detected uses an unsupported bpp (%u).\n",
 		       fb_info->var.bits_per_pixel);
 		goto err_unlock;
 	}
@@ -783,25 +783,25 @@ static int __init init_adf_fbdev(void)
 #endif
 
 	if (!try_module_get(fb_info->fbops->owner)) {
-		pr_err("try_module_get() failed\n");
+		pr_info("try_module_get() failed\n");
 		goto err_unlock;
 	}
 
 	if (fb_info->fbops->fb_open &&
 	    fb_info->fbops->fb_open(fb_info, 0) != 0) {
-		pr_err("fb_open() failed\n");
+		pr_info("fb_open() failed\n");
 		goto err_module_put;
 	}
 
 	if (!adf_fbdev_flip_possible(fb_info)) {
-		pr_err("Flipping must be supported for ADF. Aborting.\n");
+		pr_info("Flipping must be supported for ADF. Aborting.\n");
 		goto err_fb_release;
 	}
 
 	err = adf_device_init(&dev_data.device.base, fb_info->dev,
 			      &adf_fbdev_device_ops, "fbdev");
 	if (err) {
-		pr_err("adf_device_init failed (%d)\n", err);
+		pr_info("adf_device_init failed (%d)\n", err);
 		goto err_fb_release;
 	}
 
@@ -812,7 +812,7 @@ static int __init init_adf_fbdev(void)
 				 ADF_INTF_DVI, 0, ADF_INTF_FLAG_PRIMARY,
 				 &adf_fbdev_interface_ops, "fbdev_interface");
 	if (err) {
-		pr_err("adf_interface_init failed (%d)\n", err);
+		pr_info("adf_interface_init failed (%d)\n", err);
 		goto err_device_destroy;
 	}
 
@@ -851,14 +851,14 @@ static int __init init_adf_fbdev(void)
 
 	err = adf_hotplug_notify_connected(&dev_data.interface.base, mode, 1);
 	if (err) {
-		pr_err("adf_hotplug_notify_connected failed (%d)\n", err);
+		pr_info("adf_hotplug_notify_connected failed (%d)\n", err);
 		goto err_interface_destroy;
 	}
 
 	/* This doesn't really set the mode, it just updates current_mode */
 	err = adf_interface_set_mode(&dev_data.interface.base, mode);
 	if (err) {
-		pr_err("adf_interface_set_mode failed (%d)\n", err);
+		pr_info("adf_interface_set_mode failed (%d)\n", err);
 		goto err_interface_destroy;
 	}
 
@@ -866,7 +866,7 @@ static int __init init_adf_fbdev(void)
 				      &adf_fbdev_overlay_engine_ops,
 				      "fbdev_overlay_engine");
 	if (err) {
-		pr_err("adf_overlay_engine_init failed (%d)\n", err);
+		pr_info("adf_overlay_engine_init failed (%d)\n", err);
 		goto err_interface_destroy;
 	}
 
@@ -875,7 +875,7 @@ static int __init init_adf_fbdev(void)
 				   &dev_data.interface.base);
 
 	if (err) {
-		pr_err("adf_attachment_allow failed (%d)\n", err);
+		pr_info("adf_attachment_allow failed (%d)\n", err);
 		goto err_overlay_engine_destroy;
 	}
 
@@ -925,7 +925,7 @@ static void __exit exit_adf_fbdev(void)
 	struct fb_info *fb_info = dev_data.device.fb_info;
 
 	if (!lock_fb_info(fb_info)) {
-		pr_err("Failed to lock fb_info.\n");
+		pr_info("Failed to lock fb_info.\n");
 		return;
 	}
 

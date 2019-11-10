@@ -1574,13 +1574,15 @@ static int decide_ttj(void)
 		if (ctm_on == 1) {
 			TARGET_TJ =
 			MIN(MAX_TARGET_TJ,
-			MAX(STEADY_TARGET_TJ, (COEF_AE - COEF_BE * curr_tpcb / 1000)));
+			MAX(STEADY_TARGET_TJ, (COEF_AE - COEF_BE *
+				(curr_tpcb / 1000))));
 		} else if (ctm_on == 2) {
 			/* +++ cATM+ +++ */
 			TARGET_TJ = ta_get_ttj();
 			/* --- cATM+ --- */
 		}
-		current_ETJ = MIN(MAX_EXIT_TJ, MAX(STEADY_EXIT_TJ, (COEF_AX - COEF_BX * curr_tpcb / 1000)));
+		current_ETJ = MIN(MAX_EXIT_TJ, MAX(STEADY_EXIT_TJ,
+			(COEF_AX - COEF_BX * (curr_tpcb / 1000))));
 		/* tscpu_printk("cttj %d cetj %d tpcb %d\n", TARGET_TJ, current_ETJ, curr_tpcb); */
 	}
 #endif
@@ -2175,8 +2177,12 @@ static ssize_t tscpu_write_ctm(struct file *file, const char __user *buffer, siz
 			if (t_TPCB_EXTEND > 0 && t_TPCB_EXTEND < 10000) {
 				TRIP_TPCB += t_TPCB_EXTEND;
 				STEADY_TARGET_TPCB += t_TPCB_EXTEND;
-				COEF_AE = STEADY_TARGET_TJ + (STEADY_TARGET_TPCB * COEF_BE) / 1000;
-				COEF_AX = STEADY_EXIT_TJ + (STEADY_TARGET_TPCB * COEF_BX) / 1000;
+				COEF_AE = STEADY_TARGET_TJ +
+					(STEADY_TARGET_TPCB / 1000)
+					* COEF_BE;
+				COEF_AX = STEADY_EXIT_TJ +
+					(STEADY_TARGET_TPCB / 1000)
+					* COEF_BX;
 				TPCB_EXTEND = t_TPCB_EXTEND;
 			}
 		}

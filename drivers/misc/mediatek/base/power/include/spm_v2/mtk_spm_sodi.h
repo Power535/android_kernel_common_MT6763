@@ -170,21 +170,14 @@ int __attribute__((weak)) vcorefs_get_curr_ddr(void)
 
 static __always_inline u32 spm_sodi_get_pcm_idx(u32 cpu)
 {
-	u32 idx = 0;
-
 #if defined(CONFIG_MACH_MT6757) || defined(CONFIG_MACH_KIBOPLUS)
 	if (get_ddr_type() == TYPE_LPDDR3)
-		idx = DYNA_LOAD_PCM_SODI + cpu / 4;
+		return DYNA_LOAD_PCM_SODI + cpu / 4;
 	else
-		idx = DYNA_LOAD_PCM_SODI_LPDDR4 + cpu / 4;
-#if defined(CONFIG_MTK_PMIC_CHIP_MT6355)
-	if (get_ddr_type() == TYPE_LPDDR4)
-		idx = DYNA_LOAD_PCM_SODI_LPDDR4_2400 + cpu / 4;
-#endif
+		return DYNA_LOAD_PCM_SODI_LPDDR4 + cpu / 4;
 #else
-	idx = DYNA_LOAD_PCM_SODI + cpu / 4;
+	return DYNA_LOAD_PCM_SODI + cpu / 4;
 #endif
-	return idx;
 }
 
 static inline void spm_sodi_footprint(enum spm_sodi_step step)

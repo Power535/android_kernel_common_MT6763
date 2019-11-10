@@ -108,7 +108,7 @@ static IMG_INT32 devfreq_target(struct device *dev, long unsigned *requested_fre
 													 psDVFSDeviceCfg->bIdleReq,
 													 NULL))
 	{
-		dev_err(dev, "PVRSRVDevicePreClockSpeedChange failed\n");
+		dev_info(dev, "PVRSRVDevicePreClockSpeedChange failed\n");
 		return -EPERM;
 	}
 
@@ -200,7 +200,7 @@ static int FillOPPTable(struct device *dev)
 	{
 		err = dev_pm_opp_add(dev, iopp->ui32Freq, iopp->ui32Volt);
 		if (err) {
-			dev_err(dev, "Could not add OPP entry, %d\n", err);
+			dev_info(dev, "Could not add OPP entry, %d\n", err);
 			return err;
 		}
 	}
@@ -234,7 +234,7 @@ static int GetOPPValues(struct device *dev,
 	count = dev_pm_opp_get_opp_count(dev);
 	if (count < 0)
 	{
-		dev_err(dev, "Could not fetch OPP count, %d\n", count);
+		dev_info(dev, "Could not fetch OPP count, %d\n", count);
 		rcu_read_unlock();
 		return count;
 	}
@@ -256,7 +256,7 @@ static int GetOPPValues(struct device *dev,
 	if (IS_ERR(opp))
 	{
 		err = PTR_ERR(opp);
-		dev_err(dev, "Couldn't find lowest frequency, %d\n", err);
+		dev_info(dev, "Couldn't find lowest frequency, %d\n", err);
 		goto exit;
 	}
 
@@ -273,7 +273,7 @@ static int GetOPPValues(struct device *dev,
 		if (IS_ERR(opp))
 		{
 			err = PTR_ERR(opp);
-			dev_err(dev, "Couldn't find %dth frequency, %d\n", i, err);
+			dev_info(dev, "Couldn't find %dth frequency, %d\n", i, err);
 			goto exit;
 		}
 
@@ -328,7 +328,7 @@ static int RegisterCoolingDevice(struct device *dev,
 	if (IS_ERR(psDVFSDevice->psDevfreqCoolingDevice))
 	{
 		err = PTR_ERR(psDVFSDevice->psDevfreqCoolingDevice);
-		dev_err(dev, "Failed to register as devfreq cooling device %d", err);
+		dev_info(dev, "Failed to register as devfreq cooling device %d", err);
 	}
 
 	of_node_put(of_node);

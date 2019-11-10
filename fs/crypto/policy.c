@@ -14,6 +14,7 @@
 #include <linux/hie.h>
 #include "fscrypt_private.h"
 
+#define FS_AES_256_XTS_KEY_SIZE 64
 /*
  * check whether an encryption policy is consistent with an encryption context
  */

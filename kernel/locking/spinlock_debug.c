@@ -155,6 +155,12 @@ static void show_cpu_backtrace(void *ignored)
 		smp_processor_id());
 	show_stack(NULL, NULL);
 }
+
+static struct call_single_data spinlock_debug_csd = {
+	.func = show_cpu_backtrace,
+	.info = NULL,
+	.flags = 0
+};
 #endif
 
 /*Select appropriate loop counts to 1~2sec*/
@@ -167,11 +173,6 @@ static void show_cpu_backtrace(void *ignored)
 #endif
 #define WARNING_TIME 1000000000		/* warning time 1 seconds */
 
-static struct call_single_data spinlock_debug_csd = {
-	.func = show_cpu_backtrace,
-	.info = NULL,
-	.flags = 0
-};
 static void __spin_lock_debug(raw_spinlock_t *lock)
 {
 #ifdef MTK_LOCK_DEBUG

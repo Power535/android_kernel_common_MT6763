@@ -21,6 +21,7 @@
 #include <linux/regmap.h>
 #include <linux/reset.h>
 #include <linux/soc/mediatek/pmic_wrap.h>
+#include <linux/sched.h>
 
 #define PWRAP_MT8135_BRIDGE_IORD_ARB_EN		0x4
 #define PWRAP_MT8135_BRIDGE_WACS3_EN		0x10
@@ -714,7 +715,7 @@ static int pwrap_wait_for_state(struct pmic_wrapper *wrp,
 
 static int pwrap_write(struct pmic_wrapper *wrp, u32 adr, u32 wdata)
 {
-	int ret;
+	int ret = 0;
 
 	ret = pwrap_wait_for_state(wrp, pwrap_is_fsm_idle);
 	if (ret) {
@@ -730,7 +731,7 @@ static int pwrap_write(struct pmic_wrapper *wrp, u32 adr, u32 wdata)
 
 static int pwrap_read(struct pmic_wrapper *wrp, u32 adr, u32 *rdata)
 {
-	int ret;
+	int ret = 0;
 
 	ret = pwrap_wait_for_state(wrp, pwrap_is_fsm_idle);
 	if (ret) {
@@ -763,7 +764,7 @@ static int pwrap_regmap_write(void *context, u32 adr, u32 wdata)
 
 static int pwrap_reset_spislave(struct pmic_wrapper *wrp)
 {
-	int ret, i;
+	int ret = 0, i = 0;
 
 	pwrap_writel(wrp, 0, PWRAP_HIPRIO_ARB_EN);
 	pwrap_writel(wrp, 0, PWRAP_WRAP_EN);
@@ -802,8 +803,8 @@ static int pwrap_reset_spislave(struct pmic_wrapper *wrp)
  */
 static int pwrap_init_sidly(struct pmic_wrapper *wrp)
 {
-	u32 rdata;
-	u32 i;
+	u32 rdata = 0;
+	u32 i = 0;
 	u32 pass = 0;
 	signed char dly[16] = {
 		-1, 0, 1, 0, 2, -1, 1, 1, 3, -1, -1, -1, 3, -1, 2, 1
@@ -883,8 +884,8 @@ static bool pwrap_is_cipher_ready(struct pmic_wrapper *wrp)
 
 static bool pwrap_is_pmic_cipher_ready(struct pmic_wrapper *wrp)
 {
-	u32 rdata;
-	int ret;
+	u32 rdata = 0;
+	int ret = 0;
 
 	ret = pwrap_read(wrp, wrp->slave->dew_regs[PWRAP_DEW_CIPHER_RDY],
 			 &rdata);
@@ -897,7 +898,7 @@ static bool pwrap_is_pmic_cipher_ready(struct pmic_wrapper *wrp)
 static int pwrap_init_cipher(struct pmic_wrapper *wrp)
 {
 	int ret;
-	u32 rdata;
+	u32 rdata = 0;
 
 	pwrap_writel(wrp, 0x1, PWRAP_CIPHER_SWRST);
 	pwrap_writel(wrp, 0x0, PWRAP_CIPHER_SWRST);
@@ -1033,8 +1034,8 @@ static int pwrap_mt2701_init_soc_specific(struct pmic_wrapper *wrp)
 
 static int pwrap_init(struct pmic_wrapper *wrp)
 {
-	int ret;
-	u32 rdata;
+	int ret = 0;
+	u32 rdata = 0;
 
 	if (wrp->rstc)
 		reset_control_reset(wrp->rstc);
@@ -1152,7 +1153,7 @@ static int pwrap_init(struct pmic_wrapper *wrp)
 
 static irqreturn_t pwrap_interrupt(int irqno, void *dev_id)
 {
-	u32 rdata;
+	u32 rdata = 0;
 	struct pmic_wrapper *wrp = dev_id;
 
 	rdata = pwrap_readl(wrp, PWRAP_INT_FLG);
@@ -1288,7 +1289,7 @@ EXPORT_SYMBOL_GPL(pwrap_node_to_regmap);
 
 static int pwrap_probe(struct platform_device *pdev)
 {
-	int ret, irq;
+	int ret = 0, irq = 0;
 	struct pmic_wrapper *wrp;
 	struct device_node *np = pdev->dev.of_node;
 	const struct of_device_id *of_id =

@@ -24,13 +24,19 @@
 #define CMD_WFD_SMEM_ENABLE 32
 #define CMD_WFD_SMEM_DISABLE 33
 #define CMD_WFD_SMEM_ALLOC_ZERO 34
+#define CMD_SDSP_SMEM_ALLOC 40
+#define CMD_SDSP_SMEM_UNREF 41
+#define CMD_SDSP_SMEM_ENABLE 42
+#define CMD_SDSP_SMEM_DISABLE 43
+#define CMD_SDSP_SMEM_ALLOC_ZERO 44
 #define CMD_SEC_MEM_INVOKE_CMD_START 100
 #define CMD_SEC_MEM_SET_PROT_REGION CMD_SEC_MEM_INVOKE_CMD_START
 #define CMD_SEC_MEM_DUMP_MEM_INFO 101
 #define CMD_SEC_MEM_DYNAMIC_DEBUG_CONFIG 102
 #define CMD_WFD_SMEM_DUMP_MEM_INFO 103
 #define CMD_SEC_MEM_FORCE_HW_PROTECTION 104
-#define CMD_SEC_MEM_INVOKE_CMD_END 104
+#define CMD_SEC_MEM_SET_MCHUNKS_REGION 105
+#define CMD_SEC_MEM_INVOKE_CMD_END 105
 #define CMD_SEC_MEM_DUMP_INFO 255
 #define CMD_SEC_MEM_INVALID (0xFFFFFFFF)
 
@@ -46,6 +52,7 @@ enum TEE_OP {
 enum TEE_MEM_TYPE {
 	TEE_MEM_SVP = 0,
 	TEE_MEM_WFD = 1,
+	TEE_MEM_SDSP_SHARED = 2,
 };
 
 struct tee_op_cmd_mappings {
@@ -54,6 +61,7 @@ struct tee_op_cmd_mappings {
 };
 
 u32 get_tee_cmd(enum TEE_OP op, void *peer_priv);
+u32 get_tee_mem_type(void *peer_priv);
 void get_tee_peer_priv_data(enum TEE_MEM_TYPE tee_mem_type, void **peer_priv);
 
 #endif /* TEE_COMMON_H_ */

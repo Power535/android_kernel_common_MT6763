@@ -65,7 +65,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 			pfnDumpDebugPrintf(pvDumpDebugFile, fmt,         \
 					   ## __VA_ARGS__);              \
 		else                                                     \
-			pr_err(fmt "\n", ## __VA_ARGS__);                \
+			pr_info(fmt "\n", ## __VA_ARGS__);                \
 	} while (0)
 
 static inline void
@@ -288,12 +288,12 @@ pvr_fence_context_destroy_work(struct work_struct *data)
 
 			module_put(THIS_MODULE);
 		} else {
-			pr_err("%s: SyncCheckpointContextDestroy of %p failed, module unloadable\n",
+			pr_info("%s: SyncCheckpointContextDestroy of %p failed, module unloadable\n",
 			       __func__, fctx->sync_checkpoint_context);
 		}
 	} else {
 		if (srv_err != PVRSRV_OK)
-			pr_err("%s: SyncCheckpointContextDestroy of %p failed, context may be leaked\n",
+			pr_info("%s: SyncCheckpointContextDestroy of %p failed, context may be leaked\n",
 			       __func__, fctx->sync_checkpoint_context);
 	}
 
@@ -356,7 +356,7 @@ pvr_fence_context_create(void *dev_cookie,
 	srv_err = SyncCheckpointContextCreate(dev_cookie,
 				&fctx->sync_checkpoint_context);
 	if (srv_err != PVRSRV_OK) {
-		pr_err("%s: failed to create sync checkpoint context (%s)\n",
+		pr_info("%s: failed to create sync checkpoint context (%s)\n",
 		       __func__, PVRSRVGetErrorStringKM(srv_err));
 		goto err_free_fctx;
 	}
@@ -365,7 +365,7 @@ pvr_fence_context_create(void *dev_cookie,
 				pvr_fence_context_signal_fences,
 				fctx);
 	if (srv_err != PVRSRV_OK) {
-		pr_err("%s: failed to register command complete callback (%s)\n",
+		pr_info("%s: failed to register command complete callback (%s)\n",
 		       __func__, PVRSRVGetErrorStringKM(srv_err));
 		goto err_sync_prim_context_destroy;
 	}
@@ -376,7 +376,7 @@ pvr_fence_context_create(void *dev_cookie,
 				DEBUG_REQUEST_LINUXFENCE,
 				fctx);
 	if (srv_err != PVRSRV_OK) {
-		pr_err("%s: failed to register debug request callback (%s)\n",
+		pr_info("%s: failed to register debug request callback (%s)\n",
 		       __func__, PVRSRVGetErrorStringKM(srv_err));
 		goto err_unregister_cmd_complete_notify;
 	}

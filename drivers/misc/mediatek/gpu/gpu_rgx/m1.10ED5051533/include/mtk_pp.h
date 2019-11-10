@@ -5,7 +5,7 @@
 
 #if defined(MTK_DEBUG_PROC_PRINT)
 
-#define _MTKPP_DEBUG_LOG(...)	pr_err("PVR_K " __VA_ARGS__)
+#define _MTKPP_DEBUG_LOG(...)	pr_info("PVR_K " __VA_ARGS__)
 
 #if defined(__GNUC__)
 #define MTK_PP_FORMAT_PRINTF(x, y)	__attribute__((format(printf, x, y)))

@@ -13,5 +13,4 @@
 
 ccflags-y += -I$(srctree)
 obj-y += mt_secure_call.o
-obj-y += atf_log.o
-atf_log-y := atf_logger.o
+obj-${CONFIG_MTK_ATF_LOGGER} += atf_logger.o

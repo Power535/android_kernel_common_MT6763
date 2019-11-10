@@ -49,26 +49,6 @@ static int fsm_md_data_ioctl(int md_id, unsigned int cmd, unsigned long arg)
 		CCCI_NORMAL_LOG(md_id, FSM, "get bat voltage %d\n", data);
 		ret = ccci_port_send_msg_to_md(md_id, CCCI_SYSTEM_TX, MD_GET_BATTERY_INFO, data, 1);
 		break;
-	case CCCI_IOC_GET_RAT_STR:
-		ret = ccci_get_rat_str_from_drv(md_id, (char *)buffer, sizeof(buffer));
-		if (ret < 0)
-			CCCI_ERROR_LOG(md_id, FSM, "CCCI_IOC_GET_RAT_STR: gen str fail %d\n", (int)ret);
-		else {
-			if (copy_to_user((void __user *)arg, (char *)buffer,
-						strlen((char *)buffer) + 1)) {
-				CCCI_ERROR_LOG(md_id, FSM, "CCCI_IOC_GET_RAT_STR: copy_from_user fail\n");
-				ret = -EFAULT;
-			}
-		}
-		break;
-	case CCCI_IOC_SET_RAT_STR:
-		if (strncpy_from_user((char *)buffer, (void __user *)arg, sizeof(buffer))) {
-			CCCI_ERROR_LOG(md_id, FSM, "CCCI_IOC_SET_RAT_STR: copy_from_user fail\n");
-			ret = -EFAULT;
-			break;
-		}
-		ccci_set_rat_str_to_drv(md_id, (char *)buffer);
-		break;
 	case CCCI_IOC_GET_EXT_MD_POST_FIX:
 		if (copy_to_user((void __user *)arg, per_md_data->img_post_fix, IMG_POSTFIX_LEN)) {
 			CCCI_ERROR_LOG(md_id, FSM, "CCCI_IOC_GET_EXT_MD_POST_FIX: copy_to_user fail\n");
@@ -376,7 +356,7 @@ long ccci_fsm_ioctl(int md_id, unsigned int cmd, unsigned long arg)
 		/* add check whether the user call md start ioctl is valid */
 		if (strncmp(current->comm, VALID_USER, strlen(VALID_USER)) == 0) {
 			CCCI_NORMAL_LOG(md_id, FSM, "MD start ioctl called by %s\n", current->comm);
-			ret = fsm_append_command(ctl, CCCI_COMMAND_START, FSM_CMD_FLAG_WAIT_FOR_COMPLETE);
+			ret = fsm_append_command(ctl, CCCI_COMMAND_START, 0);
 		} else {
 			CCCI_ERROR_LOG(md_id, FSM, "drop invalid user:%s call MD start ioctl\n", current->comm);
 		}
@@ -388,9 +368,8 @@ long ccci_fsm_ioctl(int md_id, unsigned int cmd, unsigned long arg)
 		} else {
 			CCCI_NORMAL_LOG(md_id, FSM, "MD stop ioctl called by %s %d\n", current->comm, data);
 			ret = fsm_append_command(ctl, CCCI_COMMAND_STOP,
-					FSM_CMD_FLAG_WAIT_FOR_COMPLETE |
-					((data ? MD_FLIGHT_MODE_ENTER : MD_FLIGHT_MODE_NONE) == MD_FLIGHT_MODE_ENTER ?
-					FSM_CMD_FLAG_FLIGHT_MODE : 0));
+					(data ? MD_FLIGHT_MODE_ENTER : MD_FLIGHT_MODE_NONE) == MD_FLIGHT_MODE_ENTER ?
+					FSM_CMD_FLAG_FLIGHT_MODE : 0);
 		}
 		break;
 	case CCCI_IOC_ENTER_DEEP_FLIGHT:

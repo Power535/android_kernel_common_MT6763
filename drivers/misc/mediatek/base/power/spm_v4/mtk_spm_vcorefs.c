@@ -487,8 +487,7 @@ void dvfsrc_md_scenario_update(bool suspend)
 #if defined(CONFIG_MACH_MT6739)
 
 #else
-	if (__spm_get_dram_type() == SPMFW_LP4X_2CH ||
-			__spm_get_dram_type() == SPMFW_LP4_2CH_2400) {
+	if (__spm_get_dram_type() == SPMFW_LP4X_2CH) {
 		/* LP4 2CH */
 		if (suspend) {
 			spm_write(DVFSRC_EMI_MD2SPM0, 0x00000000);
@@ -569,8 +568,7 @@ static void dvfsrc_init(void)
 	spm_write(DVFSRC_BASIC_CONTROL, 0x0000023B);
 #else
 
-	if (__spm_get_dram_type() == SPMFW_LP4X_2CH ||
-			__spm_get_dram_type() == SPMFW_LP4_2CH_2400) {
+	if (__spm_get_dram_type() == SPMFW_LP4X_2CH) {
 		/* LP4 2CH */
 		spm_write(DVFSRC_LEVEL_LABEL_0_1, 0x00100000);
 		spm_write(DVFSRC_LEVEL_LABEL_2_3, 0x00210020);
@@ -712,8 +710,7 @@ void spm_request_dvfs_opp(int id, enum dvfs_opp opp)
 
 	switch (id) {
 	case 0: /* ZQTX */
-		if (__spm_get_dram_type() != SPMFW_LP4X_2CH &&
-				__spm_get_dram_type() != SPMFW_LP4_2CH_2400)
+		if (__spm_get_dram_type() != SPMFW_LP4X_2CH)
 			return;
 
 		dram_request_opp = (unsigned int)opp;

@@ -862,6 +862,8 @@ static void cleanup_glue_dir(struct device *dev, struct kobject *glue_dir)
 		return;
 
 	mutex_lock(&gdp_mutex);
+	if (!kobject_has_children(glue_dir))
+		kobject_del(glue_dir);
 	kobject_put(glue_dir);
 	mutex_unlock(&gdp_mutex);
 }
@@ -2088,7 +2090,6 @@ void device_shutdown(void)
 		 */
 		parent = get_device(dev->parent);
 		get_device(dev);
-		dev_info(dev, "start\n");
 		/*
 		 * Make sure the device is off the kset list, in the
 		 * event that dev->*->shutdown() doesn't remove it.
@@ -2107,11 +2108,11 @@ void device_shutdown(void)
 
 		if (dev->bus && dev->bus->shutdown) {
 			if (1)
-				dev_info(dev, " dev->bus->shutdown\n");
+				dev_info(dev, "shutdown\n");
 			dev->bus->shutdown(dev);
 		} else if (dev->driver && dev->driver->shutdown) {
 			if (1)
-				dev_info(dev, "dev->driver->shutdown\n");
+				dev_info(dev, "shutdown\n");
 			dev->driver->shutdown(dev);
 		}
 

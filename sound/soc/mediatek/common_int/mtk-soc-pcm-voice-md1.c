@@ -62,7 +62,7 @@
 #include "mtk-soc-digital-type.h"
 
 /*
- *    function implementation
+ *    declaration
  */
 
 struct mtk_voice_property {
@@ -80,6 +80,10 @@ struct mtk_voice_property {
 	int speech_bt_sco_wb;
 	int speech_md_active;
 };
+
+/*
+ *    function implementation
+ */
 
 static int mtk_voice_probe(struct platform_device *pdev);
 static int mtk_voice_close(struct snd_pcm_substream *substream);
@@ -192,6 +196,7 @@ static int speech_property_get(struct snd_kcontrol *kcontrol,
 		return -EINVAL;
 	}
 	ucontrol->value.integer.value[0] = *sph_property;
+
 	return 0;
 }
 
@@ -207,6 +212,7 @@ static int speech_property_set(struct snd_kcontrol *kcontrol,
 		return -EINVAL;
 	}
 	*sph_property = ucontrol->value.integer.value[0];
+
 	return 0;
 }
 
@@ -366,8 +372,8 @@ static int mtk_voice1_prepare(struct snd_pcm_substream *substream)
 	struct snd_pcm_runtime *runtimeStream = substream->runtime;
 
 	pr_info("%s(), stream(%d), rate = %d  channels = %d period_size = %lu\n",
-		__func__, substream->stream, runtimeStream->rate,
-		runtimeStream->channels, runtimeStream->period_size);
+		__func__, substream->stream, runtimeStream->rate, runtimeStream->channels,
+		runtimeStream->period_size);
 
 	if (substream->stream == SNDRV_PCM_STREAM_CAPTURE) {
 		/* 3-mic setting */
@@ -532,7 +538,7 @@ static int mtk_voice_pm_ops_resume(struct device *device)
 	    b_modem2_speech_on == true ||
 	    voice_property.speech_md_active == true ||
 	    GetOffloadEnableFlag() == true)
-		AudDrv_AUDINTBUS_Sel(1); /*George  syspll1_d4 */
+		AudDrv_AUDINTBUS_Sel(1); /* syspll1_d4 */
 
 	return 0;
 }

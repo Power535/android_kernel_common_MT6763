@@ -56,6 +56,7 @@ typedef enum {
 	GED_BRIDGE_COMMAND_WAIT_HW_VSYNC = 10,
 	GED_BRIDGE_COMMAND_QUERY_TARGET_FPS = 11,
 	GED_BRIDGE_COMMAND_VSYNC_WAIT = 12,
+	GED_BRIDGE_COMMAND_HINT_FORCE_MDP = 14,
 
 	GED_BRIDGE_COMMAND_GE_ALLOC = 100,
 	GED_BRIDGE_COMMAND_GE_GET = 101,
@@ -78,6 +79,8 @@ typedef enum {
 #define GED_BRIDGE_IO_EVENT_NOTIFY          GED_IOWR(GED_BRIDGE_COMMAND_EVENT_NOTIFY)
 #define GED_BRIDGE_IO_WAIT_HW_VSYNC         GED_IOWR(GED_BRIDGE_COMMAND_WAIT_HW_VSYNC)
 #define GED_BRIDGE_IO_VSYNC_WAIT            GED_IOWR(GED_BRIDGE_COMMAND_VSYNC_WAIT)
+#define GED_BRIDGE_IO_HINT_FORCE_MDP \
+	GED_IOWR(GED_BRIDGE_COMMAND_HINT_FORCE_MDP)
 
 #define GED_BRIDGE_IO_GE_ALLOC              GED_IOWR(GED_BRIDGE_COMMAND_GE_ALLOC)
 #define GED_BRIDGE_IO_GE_GET                GED_IOWR(GED_BRIDGE_COMMAND_GE_GET)
@@ -285,6 +288,19 @@ typedef struct GED_BRIDGE_IN_QUERY_TARGET_FPS_TAG {
 typedef struct GED_BRIDGE_OUT_QUERY_TARGET_FPS_TAG {
 	int fps;
 } GED_BRIDGE_OUT_QUERY_TARGET_FPS;
+
+/******************************************************************************
+ *  HINT VIDEO CODEC FORCE MDP
+ ******************************************************************************/
+struct GED_BRIDGE_IN_HINT_FORCE_MDP {
+	int32_t i32BridgeFD;
+	int32_t hint; /* 1: Do MDP, 0: No MDP, -1: No overwrite */
+};
+
+struct GED_BRIDGE_OUT_HINT_FORCE_MDP {
+	GED_ERROR eError;
+	int32_t mdp_flag; /* 1: Do MDP, 0: No MDP */
+};
 
 /*****************************************************************************
  *  GE - gralloc_extra functions

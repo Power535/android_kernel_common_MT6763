@@ -501,6 +501,7 @@ struct files_struct init_files = {
 		.full_fds_bits	= init_files.full_fds_bits_init,
 	},
 	.file_lock	= __SPIN_LOCK_UNLOCKED(init_files.file_lock),
+	.resize_wait	= __WAIT_QUEUE_HEAD_INITIALIZER(init_files.resize_wait),
 };
 
 static unsigned long find_next_fd(struct fdtable *fdt, unsigned long start)
@@ -517,7 +518,7 @@ static unsigned long find_next_fd(struct fdtable *fdt, unsigned long start)
 	return find_next_zero_bit(fdt->open_fds, maxfd, start);
 }
 
-#ifdef CONFIG_MTK_FD_LEAK_DETECT
+#ifdef FD_OVER_CHECK
 #define FD_CHECK_NAME_SIZE 256
 /* Declare a radix tree to construct fd set tree */
 static RADIX_TREE(over_fd_tree, GFP_KERNEL);
@@ -709,7 +710,7 @@ repeat:
 
 out:
 	spin_unlock(&files->file_lock);
-#ifdef CONFIG_MTK_FD_LEAK_DETECT
+#ifdef FD_OVER_CHECK
 	if (error == -EMFILE && !dump_current_open_files) {
 		/*add Backbone into FD white list for skype*/
 		/*if (strcmp(current->comm, "Backbone") != 0) {*/

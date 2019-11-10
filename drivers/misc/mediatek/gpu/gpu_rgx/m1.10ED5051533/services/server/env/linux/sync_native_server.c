@@ -61,7 +61,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 /* #define DEBUG_OUTPUT 1 */
 #ifdef DEBUG_OUTPUT
-#define DPF(fmt, ...) pr_err("%s: " fmt "\n", __func__, ## __VA_ARGS__)
+#define DPF(fmt, ...) pr_info("%s: " fmt "\n", __func__, ## __VA_ARGS__)
 #else
 #define DPF(fmt, ...) do {} while (0)
 #endif
@@ -181,7 +181,7 @@ PVRSRV_ERROR SyncSWTimelineFenceCreateKM(PVRSRV_TIMELINE iSWTimeline,
 	DPF("iSWTimeline %d nextVal %d", iSWTimeline, ui32NextSyncPtValue);
 	if (iFd < 0)
 	{
-		pr_err("%s:invalid fd\n", __func__);
+		pr_info("%s:invalid fd\n", __func__);
 		eError = PVRSRV_ERROR_INVALID_PARAMS;
 		goto ErrorOut;
 	}
@@ -190,7 +190,7 @@ PVRSRV_ERROR SyncSWTimelineFenceCreateKM(PVRSRV_TIMELINE iSWTimeline,
 	if (!psFile || !psFile->private_data)
 	{
 		/* unrecognised timeline */
-		pr_err("%s:unrecognised timeline\n", __func__);
+		pr_info("%s:unrecognised timeline\n", __func__);
 		eError = PVRSRV_ERROR_INVALID_PARAMS;
 		if (psFile)
 			fput(psFile);
@@ -245,7 +245,7 @@ PVRSRV_ERROR SyncSWTimelineAdvanceKM(SYNC_TIMELINE_OBJ pvSWTimelineObj)
 
 	if (pvr_sw_timeline->current_value == (pvr_sw_timeline->next_value-1))
 	{
-		pr_err("sync_native_server: attempt to advance SW timeline beyond last defined point\n");
+		pr_info("sync_native_server: attempt to advance SW timeline beyond last defined point\n");
 		return PVRSRV_ERROR_SW_TIMELINE_AT_LATEST_POINT;
 	}
 
@@ -296,7 +296,7 @@ PVRSRV_ERROR SyncSWTimelineFenceWaitKM(SYNC_FENCE_OBJ pvSWFenceObj,
 	}
 	else if (err != 0)
 	{
-		pr_err("%s:failed dependencies\n", __func__);
+		pr_info("%s:failed dependencies\n", __func__);
 		return PVRSRV_ERROR_FAILED_DEPENDENCIES;
 	}
 	return PVRSRV_OK;
@@ -311,7 +311,7 @@ PVRSRV_ERROR SyncSWGetTimelineObj(PVRSRV_TIMELINE iSWTimeline,
 
 	if(psFile == NULL || psFile->private_data == NULL)
 	{
-		pr_err("%s: invalid params\n", __func__);
+		pr_info("%s: invalid params\n", __func__);
 		return PVRSRV_ERROR_INVALID_PARAMS;
 	}
 	*ppvSWTimelineObj = (SYNC_TIMELINE_OBJ*)psFile->private_data;

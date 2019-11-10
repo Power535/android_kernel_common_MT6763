@@ -104,7 +104,13 @@ static inline void mrdump_mini_save_regs(struct pt_regs *regs)
 			  "stp	x28, x1, [x0],#16\n\t"
 			  "mov	x1, sp\n\t"
 			  "stp	x30, x1, [x0],#16\n\t"
-			  "mrs	x1, daif\n\t"
+			  "mrs	x1, currentel\n\t"
+			  "mrs	x30, daif\n\t"
+			  "orr	x1, x1, x30\n\t"
+			  "mrs	x30, nzcv\n\t"
+			  "orr	x1, x1, x30\n\t"
+			  "mrs	x30, spsel\n\t"
+			  "orr	x1, x1, x30\n\t"
 			  "adr	x30, 1b\n\t"
 			  "stp	x30, x1, [x0],#16\n\t"
 			  "sub	x1, x0, #272\n\t"
@@ -114,8 +120,15 @@ static inline void mrdump_mini_save_regs(struct pt_regs *regs)
 			  "str	x0, [x1, #8]\n\t"
 			  "ldp	x0, x1, [sp],#16\n\t" :  : "r" (regs) : "cc");
 #else
-	asm volatile ("stmia %1, {r0 - r15}\n\t"
-		      "mrs %0, cpsr\n":"=r" (regs->uregs[16]) : "r"(regs) : "memory");
+	asm volatile   ("stmia %[regs], {r0 - r12}\n\t"
+			"str   sp,      [%[regs], #52]\n\t"
+			"str   lr,      [%[regs], #56]\n\t"
+			"mov   r0,      pc\n\t"
+			"str   r0,      [%[regs], #60]\n\t"
+			"mrs   %[cpsr], cpsr\n\t"
+			: [cpsr] "=r" (regs->uregs[16])
+			: [regs] "r" (regs)
+			: "memory", "r0");
 #endif
 }
 

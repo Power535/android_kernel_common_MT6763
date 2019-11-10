@@ -168,7 +168,7 @@ static inline u64 get_current_time_us(void)
 	struct timespec64 ts;
 	u64 usec;
 
-	getnstimeofday64(&ts);
+	getrawmonotonic64(&ts);
 
 	usec = ts.tv_sec * 1000000ULL + ts.tv_nsec / 1000;
 

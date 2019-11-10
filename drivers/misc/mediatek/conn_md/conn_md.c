@@ -192,7 +192,7 @@ int conn_md_dmp_msg(struct conn_md_queue *p_msg_list, uint32 src_id, uint32 dst_
 	int counter = 0;
 
 	if (p_msg_list == NULL) {
-		CONN_MD_ERR_FUNC("invalid parameter, p_msg_list:0x%08x\n", p_msg_list);
+		CONN_MD_ERR_FUNC("invalid parameter, p_msg_list is NULL\n");
 		return CONN_MD_ERR_INVALID_PARAM;
 	}
 
@@ -204,7 +204,7 @@ int conn_md_dmp_msg(struct conn_md_queue *p_msg_list, uint32 src_id, uint32 dst_
 		    ((dst_id == 0) || (dst_id == p_msg->ilm.dest_mod_id))) {
 			counter++;
 			CONN_MD_INFO_FUNC
-			    ("p_msg:0x%08x, src_id:0x%08x, dest_id:0x%08x, msg_len:%d\n", p_msg,
+			    ("p_msg:%p, src_id:0x%08x, dest_id:0x%08x, msg_len:%d\n", p_msg,
 			     p_msg->ilm.src_mod_id, p_msg->ilm.dest_mod_id, p_msg->local_para.msg_len);
 			for (i = 0; (i < p_msg->local_para.msg_len) && (i < MAX_LENGTH_PER_PACKAGE); i++) {
 				CONN_MD_INFO_FUNC("%02x ", p_msg->local_para.data[i]);
@@ -270,14 +270,14 @@ int conn_md_send_msg(struct ipc_ilm *ilm)
 	struct conn_md_msg *p_new_msg = NULL;
 	uint32 msg_info_len = ilm->local_para_ptr->msg_len;
 
-	CONN_MD_DBG_FUNC("ilm:0x%08x, msg_len:%d\n", ilm, ilm->local_para_ptr->msg_len);
+	CONN_MD_DBG_FUNC("ilm:%p, msg_len:%d\n", ilm, ilm->local_para_ptr->msg_len);
 
 	/*malloc message structure for this msg */
 	msg_str_len = sizeof(struct conn_md_msg) + msg_info_len;
 	p_new_msg = kmalloc(msg_str_len, GFP_ATOMIC);
 
 	if (p_new_msg != NULL) {
-		CONN_MD_DBG_FUNC("p_new_msg:0x%08x\n", p_new_msg);
+		CONN_MD_DBG_FUNC("p_new_msg:%p\n", p_new_msg);
 		/*copy message from ilm */
 		memcpy(p_new_msg, ilm, sizeof(struct ipc_ilm));
 
@@ -289,7 +289,7 @@ int conn_md_send_msg(struct ipc_ilm *ilm)
 		memcpy(p_local_para->data, ilm->local_para_ptr->data,
 				msg_info_len - sizeof(struct local_para));
 
-		CONN_MD_DBG_FUNC("p_local_para:0x%08x, msg_len:%d\n", p_local_para, p_local_para->msg_len);
+		CONN_MD_DBG_FUNC("p_local_para:%p, msg_len:%d\n", p_local_para, p_local_para->msg_len);
 
 		INIT_LIST_HEAD(&p_new_msg->entry);
 
@@ -439,7 +439,7 @@ static int conn_md_thread(void *p_data)
 #endif
 				continue;
 			}
-			CONN_MD_DBG_FUNC("p_cur_ilm:0x%08x, local_para_ptr:0x%08x, msg_len:%d\n",
+			CONN_MD_DBG_FUNC("p_cur_ilm:%p, local_para_ptr:%p, msg_len:%d\n",
 					 p_cur_ilm, &p_cur_ilm->local_para_ptr, p_cur_ilm->local_para_ptr->msg_len);
 			CONN_MD_DBG_FUNC("sending message to user id (0x%08x)\n", p_cur_ilm->dest_mod_id);
 			/*send package to dest module by call corresponding rx callback function */

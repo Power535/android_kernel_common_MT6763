@@ -808,6 +808,42 @@ DEVICE_ATTR(recovery_flag, 0600, scp_recovery_flag_r, scp_recovery_flag_w);
 
 #endif
 
+
+#if SCP_LOG_FILTER_SUPPORT
+/******************************************************************************
+ *****************************************************************************/
+static ssize_t scp_set_log_filter(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	enum scp_ipi_status ret;
+	uint32_t filter;
+	const unsigned int len = sizeof(filter);
+
+	if (sscanf(buf, "0x%08x", &filter) != 1)
+		return -EINVAL;
+
+	ret = scp_ipi_send(IPI_SCP_LOG_FILTER, &filter, len, 0, SCP_A_ID);
+	switch (ret) {
+	case SCP_IPI_DONE:
+		pr_notice("[SCP] Set log filter to 0x%08x\n", filter);
+		return count;
+
+	case SCP_IPI_BUSY:
+		pr_notice("[SCP] IPI busy. Set log filter failed!\n");
+		return -EBUSY;
+
+	case SCP_IPI_ERROR:
+	default:
+		pr_notice("[SCP] IPI error. Set log filter failed!\n");
+		return -EIO;
+	}
+}
+DEVICE_ATTR(log_filter, 0200, NULL, scp_set_log_filter);
+#endif  /* SCP_LOG_FILTER_SUPPORT */
+
+
+/******************************************************************************
+ *****************************************************************************/
 static struct miscdevice scp_device = {
 	.minor = MISC_DYNAMIC_MINOR,
 	.name = "scp",
@@ -925,6 +961,12 @@ static int create_files(void)
 		return ret;
 
 #endif
+
+#if SCP_LOG_FILTER_SUPPORT
+	ret = device_create_file(scp_device.this_device, &dev_attr_log_filter);
+	if (unlikely(ret != 0))
+		return ret;
+#endif  /* SCP_LOG_FILTER_SUPPORT */
 
 	return 0;
 }

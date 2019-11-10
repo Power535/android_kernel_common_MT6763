@@ -274,6 +274,7 @@ int fsm_scp_init(struct ccci_fsm_scp *scp_ctl);
 int fsm_poller_init(struct ccci_fsm_poller *poller_ctl);
 int fsm_ee_init(struct ccci_fsm_ee *ee_ctl);
 int fsm_monitor_init(struct ccci_fsm_monitor *monitor_ctl);
+int fsm_sys_init(void);
 
 struct ccci_fsm_ctl *fsm_get_entity_by_device_number(dev_t dev_n);
 struct ccci_fsm_ctl *fsm_get_entity_by_md_id(int md_id);
@@ -286,6 +287,7 @@ void fsm_md_no_response_handler(struct ccci_fsm_ee *ee_ctl);
 void fsm_md_exception_stage(struct ccci_fsm_ee *ee_ctl, int stage);
 void fsm_ee_message_handler(struct ccci_fsm_ee *ee_ctl, struct sk_buff *skb);
 int fsm_check_ee_done(struct ccci_fsm_ee *ee_ctl, int timeout);
+int force_md_stop(struct ccci_fsm_monitor *monitor_ctl);
 
 extern int mdee_dumper_v1_alloc(struct ccci_fsm_ee *mdee);
 extern int mdee_dumper_v2_alloc(struct ccci_fsm_ee *mdee);

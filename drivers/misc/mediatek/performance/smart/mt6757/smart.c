@@ -45,13 +45,13 @@
 
 #define S_LOG(fmt, args...)		pr_debug(TAG fmt, ##args)
 
-static int turbo_support;
+static int l_plus_support;
 /* Operaton */
 
 
 /******* FLIPER SETTING *********/
 
-static ssize_t mt_smart_turbo_support_write(struct file *filp, const char *ubuf,
+static ssize_t mt_l_plus_support_write(struct file *filp, const char *ubuf,
 		size_t cnt, loff_t *data)
 {
 	int ret;
@@ -60,18 +60,18 @@ static ssize_t mt_smart_turbo_support_write(struct file *filp, const char *ubuf,
 	if (!kstrtoul_from_user(ubuf, cnt, 0, &arg)) {
 		ret = 0;
 		if (arg == 0)
-			turbo_support = 0;
+			l_plus_support = 0;
 		else
-			turbo_support = 1;
+			l_plus_support = 1;
 	} else
 		ret = -EINVAL;
 
 	return (ret < 0) ? ret : cnt;
 }
 
-static int mt_smart_turbo_support_show(struct seq_file *m, void *v)
+static int mt_l_plus_support_show(struct seq_file *m, void *v)
 {
-	if (turbo_support)
+	if (l_plus_support)
 		SEQ_printf(m, "1\n");
 	else
 		SEQ_printf(m, "0\n");
@@ -79,14 +79,14 @@ static int mt_smart_turbo_support_show(struct seq_file *m, void *v)
 }
 
 /*** Seq operation of mtprof ****/
-static int mt_smart_turbo_support_open(struct inode *inode, struct file *file)
+static int mt_l_plus_support_open(struct inode *inode, struct file *file)
 {
-	return single_open(file, mt_smart_turbo_support_show, inode->i_private);
+	return single_open(file, mt_l_plus_support_show, inode->i_private);
 }
 
-static const struct file_operations mt_smart_turbo_support_fops = {
-	.open = mt_smart_turbo_support_open,
-	.write = mt_smart_turbo_support_write,
+static const struct file_operations mt_l_plus_support_fops = {
+	.open = mt_l_plus_support_open,
+	.write = mt_l_plus_support_write,
 	.read = seq_read,
 	.llseek = seq_lseek,
 	.release = single_release,
@@ -98,7 +98,7 @@ static void check_l_plus_support(void)
 	unsigned int bining = get_devinfo_with_index(30) & 0x7;
 
 	if (segment_inner == 7 || bining == 3)
-		turbo_support = 1;
+		l_plus_support = 1;
 }
 
 /*--------------------INIT------------------------*/
@@ -112,11 +112,11 @@ int __init init_smart(void)
 	smart_dir = proc_mkdir("perfmgr/smart", NULL);
 
 	pr_debug(TAG"init smart driver start\n");
-	pe5 = proc_create("smart_turbo_support", 0644, smart_dir, &mt_smart_turbo_support_fops);
+	pe5 = proc_create("l_plus_support", 0644, smart_dir, &mt_l_plus_support_fops);
 	if (!pe5)
 		return -ENOMEM;
 
-	turbo_support = 0;
+	l_plus_support = 0;
 	check_l_plus_support();
 
 	pr_debug(TAG"init smart driver done\n");

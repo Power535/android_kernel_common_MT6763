@@ -1947,12 +1947,6 @@ int mvg_case_exit(const char *gname, const char *cname)
 }
 EXPORT_SYMBOL(mvg_case_exit);
 
-char *os_get_task_comm(char *buf, struct task_struct *tsk)
-{
-	return get_task_comm(buf, tsk);
-}
-EXPORT_SYMBOL(os_get_task_comm);
-
 unsigned long long os_sched_clock(void)
 {
 	return sched_clock();

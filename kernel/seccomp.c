@@ -580,7 +580,6 @@ void secure_computing_strict(int this_syscall)
 }
 #else
 
-
 #ifdef CONFIG_SECCOMP_FILTER
 static int __seccomp_filter(int this_syscall, const struct seccomp_data *sd,
 			    const bool recheck_after_trace)

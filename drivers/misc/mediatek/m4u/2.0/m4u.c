@@ -394,6 +394,7 @@ static int m4u_fill_sgtable_user(struct vm_area_struct *vma, unsigned long va, i
 	int i, ret;
 	struct scatterlist *sg = *pSg;
 	struct page *pages;
+	unsigned int flags = 0;
 
 	va_align = round_down(va, PAGE_SIZE);
 
@@ -405,8 +406,10 @@ static int m4u_fill_sgtable_user(struct vm_area_struct *vma, unsigned long va, i
 
 		for (fault_cnt = 0; fault_cnt < 3000; fault_cnt++) {
 			if (has_page) {
+				if (vma->vm_flags & VM_WRITE)
+					flags |= FOLL_WRITE;
 				ret = get_user_pages(current, current->mm, va_tmp, 1,
-					(vma->vm_flags & VM_WRITE), 0, &pages, NULL);
+					flags, &pages, NULL);
 
 				if (ret == 1)
 					pa = page_to_phys(pages) | (va_tmp & ~PAGE_MASK);

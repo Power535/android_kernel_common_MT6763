@@ -98,6 +98,7 @@ struct SCP_sensorHub_data {
 };
 static struct SensorState mSensorState[SENSOR_TYPE_MAX_NUM_PLUS_ONE];
 static DEFINE_MUTEX(mSensorState_mtx);
+static DEFINE_MUTEX(flush_mtx);
 static atomic_t power_status = ATOMIC_INIT(SENSOR_POWER_DOWN);
 static DECLARE_WAIT_QUEUE_HEAD(chre_kthread_wait);
 static DECLARE_WAIT_QUEUE_HEAD(power_reset_wait);
@@ -138,6 +139,12 @@ phys_addr_t __attribute__((weak)) scp_get_reserve_mem_phys(enum scp_reserve_mem_
 	return 0;
 }
 
+phys_addr_t __attribute__((weak))
+	scp_get_reserve_mem_size(enum scp_reserve_mem_id_t id)
+{
+	return 0;
+}
+
 void __attribute__((weak)) scp_register_feature(enum feature_id id)
 {
 }
@@ -155,18 +162,19 @@ static inline uint64_t arch_counter_to_ns(uint64_t cyc)
 #define FILTER_FREQ			10000000ULL /* 10 ms */
 struct moving_average {
 	uint64_t last_time;
-	uint64_t input[FILTER_DATAPOINTS];
-	uint64_t output;
+	int64_t input[FILTER_DATAPOINTS];
+	atomic64_t output;
 	uint8_t cnt;
 	uint8_t tail;
 };
 static struct moving_average moving_average_algo;
 static uint8_t rtc_compensation_suspend;
-static void moving_average_filter(struct moving_average *filter, uint64_t ap_time, uint64_t hub_time)
+static void moving_average_filter(struct moving_average *filter,
+		uint64_t ap_time, uint64_t hub_time)
 {
 	int i = 0;
-	int32_t avg;
-	uint64_t ret_avg = 0;
+	int64_t avg = 0;
+	int64_t ret_avg = 0;
 
 	if (ap_time > filter->last_time + FILTER_TIMEOUT || filter->last_time == 0) {
 		filter->tail = 0;
@@ -184,14 +192,14 @@ static void moving_average_filter(struct moving_average *filter, uint64_t ap_tim
 	/* pr_err("hongxu raw_offset=%lld\n", ap_time - hub_time); */
 
 	for (i = 1, avg = 0; i < filter->cnt; i++)
-		avg += (int32_t)(filter->input[i] - filter->input[0]);
-	ret_avg = (avg / filter->cnt) + filter->input[0];
-	WRITE_ONCE(filter->output, ret_avg);
+		avg += (filter->input[i] - filter->input[0]);
+	ret_avg = div_s64(avg, filter->cnt) + filter->input[0];
+	atomic64_set(&filter->output, ret_avg);
 }
 
 static uint64_t get_filter_output(struct moving_average *filter)
 {
-	return READ_ONCE(filter->output);
+	return atomic64_read(&filter->output);
 }
 
 struct SCP_sensorHub_Cmd {
@@ -857,7 +865,6 @@ static void SCP_sensorHub_init_sensor_state(void)
 	mSensorState[SENSOR_TYPE_RGBW].timestamp_filter = false;
 
 	mSensorState[SENSOR_TYPE_SAR].sensorType = SENSOR_TYPE_SAR;
-	mSensorState[SENSOR_TYPE_SAR].rate = SENSOR_RATE_ONCHANGE;
 	mSensorState[SENSOR_TYPE_SAR].timestamp_filter = false;
 }
 
@@ -934,16 +941,29 @@ static int SCP_sensorHub_flush(int handle)
 	uint8_t sensor_type = handle + ID_OFFSET;
 	struct ConfigCmd cmd;
 	int ret = 0;
+	atomic_t *p_flush_count = NULL;
 
 	if (mSensorState[sensor_type].sensorType) {
-		atomic_inc(&mSensorState[sensor_type].flushCnt);
 		init_sensor_config_cmd(&cmd, sensor_type);
 		cmd.cmd = CONFIG_CMD_FLUSH;
+		/*
+		 * add count must before flush, if we add count after
+		 * flush right return and flush callback directly report
+		 * flush will lose flush complete
+		 */
+		p_flush_count = &mSensorState[sensor_type].flushCnt;
+		mutex_lock(&flush_mtx);
+		atomic_inc(p_flush_count);
+		mutex_unlock(&flush_mtx);
 		if (atomic_read(&power_status) == SENSOR_POWER_UP) {
 			ret = nanohub_external_write((const uint8_t *)&cmd,
 				sizeof(struct ConfigCmd));
 			if (ret < 0) {
-				SCP_PR_ERR("failed flush handle:%d\n", handle);
+				pr_err("failed flush handle:%d\n", handle);
+				mutex_lock(&flush_mtx);
+				if (atomic_read(p_flush_count) > 0)
+					atomic_dec(p_flush_count);
+				mutex_unlock(&flush_mtx);
 				return -1;
 			}
 		}
@@ -954,90 +974,98 @@ static int SCP_sensorHub_flush(int handle)
 	return 0;
 }
 
-static int SCP_sensorHub_report_data(struct data_unit_t *data_t)
+static int SCP_sensorHub_report_raw_data(struct data_unit_t *data_t)
 {
 	struct SCP_sensorHub_data *obj = obj_data;
-	int err = 0, sensor_type = 0, sensor_id = 0, alt_id;
-	int64_t timestamp_ms = 0;
-	static int64_t last_timestamp_ms[ID_SENSOR_MAX_HANDLE_PLUS_ONE];
-	uint8_t alt = 0;
+	int err = 0, sensor_type = 0, sensor_id = 0;
 	atomic_t *p_flush_count = NULL;
-	bool raw_enable = 0, alt_enable = 0;
-	bool need_send = false;
-	/* int64_t now_enter_timestamp = 0;
-	 * now_enter_timestamp = ktime_get_boot_ns();
-	 * pr_err("type:%d,now time:%lld, scp time: %lld\n",
-	 * data_t->sensor_type, now_enter_timestamp,
-	 * data_t->time_stamp);
-	 */
+	bool raw_enable = 0;
+	int64_t raw_enable_time = 0;
+
 	sensor_id = data_t->sensor_type;
 	sensor_type = sensor_id + ID_OFFSET;
-	data_t->time_stamp += get_filter_output(&moving_average_algo);
-	/*
-	 * pr_debug("compensation_offset=%lld\n",
-	 * get_filter_output(&moving_average_algo));
-	 */
-	alt = READ_ONCE(mSensorState[sensor_type].alt);
-	alt_id = alt - ID_OFFSET;
-	if (!alt) {
-		raw_enable = READ_ONCE(mSensorState[sensor_type].enable);
-	} else if (alt) {
-		raw_enable = READ_ONCE(mSensorState[sensor_type].enable);
-		alt_enable = READ_ONCE(mSensorState[alt].enable);
-	}
-	if (sensor_id > ID_SENSOR_MAX_HANDLE) {
-		SCP_PR_ERR("invalid sensor %d\n", sensor_id);
-		return err;
+
+	if (sensor_id < 0 || sensor_id > ID_SENSOR_MAX_HANDLE) {
+		pr_err("invalid sensor %d\n", sensor_id);
+		return 0;
 	}
 
 	if (obj->dispatch_data_cb[sensor_id] == NULL) {
-		SCP_PR_ERR("type:%d don't support this flow?\n", sensor_id);
+		pr_err("type:%d don't support this flow?\n", sensor_id);
 		return 0;
 	}
-	if (alt) {
-		if (obj->dispatch_data_cb[alt_id] == NULL) {
-			SCP_PR_ERR("alt:%d don't support this flow?\n", alt_id);
-			return 0;
-		}
-	}
-	if (data_t->flush_action != DATA_ACTION)
-		need_send = true;
-	else {
-		/* timestamp filter, drop which equal to each other at 1 ms */
-		timestamp_ms = (int64_t)data_t->time_stamp;
-		timestamp_ms = div_s64(timestamp_ms, 1000000);
-		if (last_timestamp_ms[sensor_id] != timestamp_ms) {
-			last_timestamp_ms[sensor_id] = timestamp_ms;
-			need_send = true;
-		} else
-			need_send = false;
-		if (!mSensorState[sensor_type].timestamp_filter)
-			need_send = true;
-	}
-	if (need_send == true && !alt) {
-		err = obj->dispatch_data_cb[sensor_id](data_t, NULL);
-		if (data_t->flush_action == FLUSH_ACTION)
-			atomic_dec(&mSensorState[sensor_type].flushCnt);
-	} else if (need_send == true && alt) {
-		if (alt_enable && data_t->flush_action == DATA_ACTION)
-			err = obj->dispatch_data_cb[alt_id](data_t, NULL);
-		else if (alt_enable && data_t->flush_action == FLUSH_ACTION) {
-			p_flush_count = &mSensorState[alt].flushCnt;
-			if (atomic_dec_if_positive(p_flush_count) >= 0)
-				err = obj->dispatch_data_cb[alt_id](data_t,
-					NULL);
-		}
-		if (raw_enable && data_t->flush_action == DATA_ACTION)
+
+	raw_enable = READ_ONCE(mSensorState[sensor_type].enable);
+	raw_enable_time = atomic64_read(&mSensorState[sensor_type].enableTime);
+
+	if (raw_enable && data_t->flush_action == DATA_ACTION) {
+		if (data_t->time_stamp > raw_enable_time)
 			err = obj->dispatch_data_cb[sensor_id](data_t, NULL);
-		else if (raw_enable && data_t->flush_action == FLUSH_ACTION) {
-			p_flush_count = &mSensorState[sensor_type].flushCnt;
-			if (atomic_dec_if_positive(p_flush_count) >= 0)
-				err = obj->dispatch_data_cb[sensor_id](data_t,
-					NULL);
-		} else if (data_t->flush_action == BIAS_ACTION ||
+		else
+			pr_info("ac:%d, e:%lld, d:%lld\n", data_t->flush_action,
+				raw_enable_time, data_t->time_stamp);
+	} else if (data_t->flush_action == FLUSH_ACTION) {
+		mutex_lock(&flush_mtx);
+		p_flush_count = &mSensorState[sensor_type].flushCnt;
+		if (atomic_read(p_flush_count) > 0) {
+			err = obj->dispatch_data_cb[sensor_id](data_t, NULL);
+			if (!err)
+				atomic_dec(p_flush_count);
+		}
+		mutex_unlock(&flush_mtx);
+	} else if (data_t->flush_action == BIAS_ACTION ||
 			data_t->flush_action == CALI_ACTION ||
 			data_t->flush_action == TEMP_ACTION)
-			err = obj->dispatch_data_cb[sensor_id](data_t, NULL);
+		err = obj->dispatch_data_cb[sensor_id](data_t, NULL);
+	return err;
+}
+
+static int SCP_sensorHub_report_alt_data(struct data_unit_t *data_t)
+{
+	struct SCP_sensorHub_data *obj = obj_data;
+	int err = 0, sensor_type = 0, sensor_id = 0, alt_id;
+	uint8_t alt = 0;
+	atomic_t *p_flush_count = NULL;
+	bool alt_enable = 0;
+	int64_t alt_enable_time = 0;
+
+	sensor_id = data_t->sensor_type;
+	sensor_type = sensor_id + ID_OFFSET;
+
+	if (sensor_id < 0 || sensor_id > ID_SENSOR_MAX_HANDLE) {
+		pr_err("invalid sensor %d\n", sensor_id);
+		return 0;
+	}
+
+	alt = READ_ONCE(mSensorState[sensor_type].alt);
+	alt_id = alt - ID_OFFSET;
+
+	if (alt == 0)
+		return 0;
+
+	if (obj->dispatch_data_cb[alt_id] == NULL) {
+		pr_err("alt:%d don't support this flow?\n", alt_id);
+		return 0;
+	}
+
+	alt_enable = READ_ONCE(mSensorState[alt].enable);
+	alt_enable_time = atomic64_read(&mSensorState[alt].enableTime);
+
+	if (alt_enable && data_t->flush_action == DATA_ACTION) {
+		if (data_t->time_stamp > alt_enable_time)
+			err = obj->dispatch_data_cb[alt_id](data_t, NULL);
+		else
+			pr_info("ac:%d, e:%lld, d:%lld\n", data_t->flush_action,
+				alt_enable_time, data_t->time_stamp);
+	} else if (data_t->flush_action == FLUSH_ACTION) {
+		mutex_lock(&flush_mtx);
+		p_flush_count = &mSensorState[alt].flushCnt;
+		if (atomic_read(p_flush_count) > 0) {
+			err = obj->dispatch_data_cb[alt_id](data_t, NULL);
+			if (!err)
+				atomic_dec(p_flush_count);
+		}
+		mutex_unlock(&flush_mtx);
 	}
 
 	return err;
@@ -1046,16 +1074,18 @@ static int SCP_sensorHub_server_dispatch_data(uint32_t *currWp)
 {
 	struct SCP_sensorHub_data *obj = obj_data;
 	char *pStart, *pEnd, *rp, *wp;
-	struct data_unit_t event, event_copy;
+	struct data_unit_t event;
 	uint32_t wp_copy;
 	int err = 0;
 
-	pStart = (char *)obj->SCP_sensorFIFO + offsetof(struct sensorFIFO, data);
-	pEnd = pStart + obj->SCP_sensorFIFO->FIFOSize;
+	int64_t scp_time = 0;
+
+	pStart = (char *)READ_ONCE(obj->SCP_sensorFIFO) +
+		offsetof(struct sensorFIFO, data);
+	pEnd = pStart +  READ_ONCE(obj->SCP_sensorFIFO->FIFOSize);
 	wp_copy = *currWp;
 	rp = pStart + obj->SCP_sensorFIFO->rp;
 	wp = pStart + wp_copy;
-
 
 	if (wp < pStart || pEnd < wp) {
 		SCP_PR_ERR("FIFO wp invalid : %p, %p, %p\n", pStart, pEnd, wp);
@@ -1075,50 +1105,72 @@ static int SCP_sensorHub_server_dispatch_data(uint32_t *currWp)
 	if (rp < wp) {
 		while (rp < wp) {
 			memcpy_fromio(&event, rp, SENSOR_DATA_SIZE);
-			/* this is a work, we sleep here safe enough, data will save in dram and not lost */
+
+			scp_time = event.time_stamp;
+			event.time_stamp +=
+				get_filter_output(&moving_average_algo);
+
 			do {
-				/* init event_copy when retry */
-				event_copy = event;
-				err = SCP_sensorHub_report_data(&event_copy);
-				if (err < 0) {
+				err = SCP_sensorHub_report_raw_data(&event);
+				if (err < 0)
 					usleep_range(2000, 4000);
-					pr_err_ratelimited("event buffer full, so sleep some time\n");
-				}
 			} while (err < 0);
+
+			do {
+				err = SCP_sensorHub_report_alt_data(&event);
+				if (err < 0)
+					usleep_range(2000, 4000);
+			} while (err < 0);
+
 			rp += SENSOR_DATA_SIZE;
 		}
 	} else if (rp > wp) {
 		while (rp < pEnd) {
 			memcpy_fromio(&event, rp, SENSOR_DATA_SIZE);
+			scp_time = event.time_stamp;
+			event.time_stamp +=
+				get_filter_output(&moving_average_algo);
+
 			do {
-				/* init event_copy when retry */
-				event_copy = event;
-				err = SCP_sensorHub_report_data(&event_copy);
-				if (err < 0) {
+				err = SCP_sensorHub_report_raw_data(&event);
+				if (err < 0)
 					usleep_range(2000, 4000);
-					pr_err_ratelimited("event buffer full, so sleep some time\n");
-				}
 			} while (err < 0);
+
+			do {
+				err = SCP_sensorHub_report_alt_data(&event);
+				if (err < 0)
+					usleep_range(2000, 4000);
+			} while (err < 0);
+
 			rp += SENSOR_DATA_SIZE;
 		}
 		rp = pStart;
 		while (rp < wp) {
 			memcpy_fromio(&event, rp, SENSOR_DATA_SIZE);
+			scp_time = event.time_stamp;
+			event.time_stamp +=
+				get_filter_output(&moving_average_algo);
+
 			do {
-				/* init event_copy when retry */
-				event_copy = event;
-				err = SCP_sensorHub_report_data(&event_copy);
-				if (err < 0) {
+				err = SCP_sensorHub_report_raw_data(&event);
+				if (err < 0)
 					usleep_range(2000, 4000);
-					pr_err_ratelimited("event buffer full, so sleep some time\n");
-				}
 			} while (err < 0);
+
+			do {
+				err = SCP_sensorHub_report_alt_data(&event);
+				if (err < 0)
+					usleep_range(2000, 4000);
+			} while (err < 0);
+
 			rp += SENSOR_DATA_SIZE;
 		}
 	}
-	/* must obj->SCP_sensorFIFO->rp = wp, there can not obj->SCP_sensorFIFO->rp = obj->SCP_sensorFIFO->wp */
+	/* must obj->SCP_sensorFIFO->rp = wp,
+	 *there can not obj->SCP_sensorFIFO->rp = obj->SCP_sensorFIFO->wp
+	 */
 	obj->SCP_sensorFIFO->rp = wp_copy;
-
 	return 0;
 }
 
@@ -1166,7 +1218,7 @@ static int sensor_send_timestamp_wake_locked(void)
 	req.set_config_req.action = SENSOR_HUB_SET_TIMESTAMP;
 	req.set_config_req.ap_timestamp = now_time;
 	req.set_config_req.arch_counter = arch_counter;
-	/* pr_err("hongxu, ns=%lld, arch_counter=%lld!\n", now_time, arch_counter); */
+	pr_debug("sync ap boottime=%lld",  now_time);
 	len = sizeof(req.set_config_req);
 	err = scp_sensorHub_req_send(&req, &len, 1);
 	if (err < 0)
@@ -1189,7 +1241,40 @@ static int sensor_send_timestamp_to_hub(void)
 	wake_unlock(&obj->sync_time_wake_lock);
 	return err;
 }
+static void sensor_disable_report_flush(uint8_t handle)
+{
+	struct SCP_sensorHub_data *obj = obj_data;
+	uint8_t sensor_type = handle + ID_OFFSET;
+	struct data_unit_t data_t;
+	atomic_t *p_flush_count = NULL;
+	SCP_sensorHub_handler func;
+	int ret = 0, retry = 0;
 
+	func = obj->dispatch_data_cb[handle];
+	if (!func)
+		return;
+
+	/*
+	 * disable sensor only check func return err 5 times
+	 */
+	mutex_lock(&flush_mtx);
+	p_flush_count = &mSensorState[sensor_type].flushCnt;
+	while (atomic_read(p_flush_count) > 0) {
+		atomic_dec(p_flush_count);
+		memset(&data_t, 0, sizeof(struct data_unit_t));
+		data_t.sensor_type = handle;
+		data_t.flush_action = FLUSH_ACTION;
+		do {
+			ret = func(&data_t, NULL);
+			if (ret < 0)
+				usleep_range(2000, 4000);
+		} while (ret < 0 && retry++ < 5);
+		if (ret < 0)
+			pr_err("%d flush complete err when disable\n",
+				handle);
+	}
+	mutex_unlock(&flush_mtx);
+}
 int sensor_enable_to_hub(uint8_t handle, int enabledisable)
 {
 	uint8_t sensor_type = handle + ID_OFFSET;
@@ -1207,6 +1292,9 @@ int sensor_enable_to_hub(uint8_t handle, int enabledisable)
 	}
 	if (mSensorState[sensor_type].sensorType) {
 		mSensorState[sensor_type].enable = enabledisable;
+		if (enabledisable)
+			atomic64_set(&mSensorState[sensor_type].enableTime,
+							ktime_get_boot_ns());
 		init_sensor_config_cmd(&cmd, sensor_type);
 		if (atomic_read(&power_status) == SENSOR_POWER_UP) {
 			ret = nanohub_external_write((const uint8_t *)&cmd,
@@ -1215,11 +1303,8 @@ int sensor_enable_to_hub(uint8_t handle, int enabledisable)
 				SCP_PR_ERR("fail registerlistener handle:%d,cmd:%d\n",
 				     handle, cmd.cmd);
 		}
-		if ((!enabledisable) &&
-			(atomic_read(&mSensorState[sensor_type].flushCnt))) {
-			SCP_PR_ERR("handle=%d flush count not 0 when disable\n",
-				handle);
-		}
+		if (!enabledisable)
+			sensor_disable_report_flush(handle);
 	} else {
 		SCP_PR_ERR("unhandle handle=%d, is inited?\n", handle);
 		mutex_unlock(&mSensorState_mtx);
@@ -1553,6 +1638,12 @@ int sensor_get_data_from_hub(uint8_t sensorType, struct data_unit_t *data)
 		data->floor_counter_t.accumulated_floor_count
 		    = data_t->floor_counter_t.accumulated_floor_count;
 		break;
+	case ID_SAR:
+		data->time_stamp = data_t->time_stamp;
+		data->sar_event.data[0] = data_t->sar_event.data[0];
+		data->sar_event.data[1] = data_t->sar_event.data[1];
+		data->sar_event.data[2] = data_t->sar_event.data[2];
+		break;
 	default:
 		err = -1;
 		break;
@@ -1864,6 +1955,20 @@ int sensor_set_cmd_to_hub(uint8_t sensorType, CUST_ACTION action, void *data)
 			return -1;
 		}
 		break;
+	case ID_SAR:
+		req.set_cust_req.sensorType = ID_SAR;
+		req.set_cust_req.action = SENSOR_HUB_SET_CUST;
+		switch (action) {
+		case CUST_ACTION_GET_SENSOR_INFO:
+			req.set_cust_req.getInfo.action =
+				CUST_ACTION_GET_SENSOR_INFO;
+			len = offsetof(SCP_SENSOR_HUB_SET_CUST_REQ, custData)
+			    + sizeof(req.set_cust_req.getInfo);
+			break;
+		default:
+			return -1;
+		}
+		break;
 	default:
 		req.set_cust_req.sensorType = sensorType;
 		req.set_cust_req.action = SENSOR_HUB_SET_CUST;
@@ -1910,7 +2015,7 @@ static void restoring_enable_sensorHub_sensor(int handle)
 {
 	uint8_t sensor_type = handle + ID_OFFSET;
 	int ret = 0;
-	int flush_cnt = 0;
+	int i = 0, flush_cnt = 0;
 	struct ConfigCmd cmd;
 
 	if (mSensorState[sensor_type].sensorType &&
@@ -1927,14 +2032,15 @@ static void restoring_enable_sensorHub_sensor(int handle)
 				handle, cmd.cmd);
 
 		cmd.cmd = CONFIG_CMD_FLUSH;
-		for (flush_cnt = 0; flush_cnt <
-			atomic_read(&mSensorState[sensor_type].flushCnt);
-			flush_cnt++) {
+		mutex_lock(&flush_mtx);
+		flush_cnt = atomic_read(&mSensorState[sensor_type].flushCnt);
+		for (i = 0; i < flush_cnt; i++) {
 			ret = nanohub_external_write((const uint8_t *)&cmd,
 				sizeof(struct ConfigCmd));
 			if (ret < 0)
 				pr_notice("failed flush handle:%d\n", handle);
 		}
+		mutex_unlock(&flush_mtx);
 	}
 
 }
@@ -1958,11 +2064,11 @@ static int sensorHub_power_up_work(void *data)
 		obj->wp_queue.tail = 0;
 		/* 2. init dram information */
 		obj->SCP_sensorFIFO = (struct sensorFIFO *)(long)scp_get_reserve_mem_virt(SENS_MEM_ID);
-		WARN_ON(obj->SCP_sensorFIFO == NULL);
+		BUG_ON(obj->SCP_sensorFIFO == NULL);
 		obj->SCP_sensorFIFO->wp = 0;
 		obj->SCP_sensorFIFO->rp = 0;
 		obj->SCP_sensorFIFO->FIFOSize =
-				(SCP_SENSOR_HUB_FIFO_SIZE - offsetof(struct sensorFIFO, data)) /
+				((long)scp_get_reserve_mem_size(SENS_MEM_ID) - offsetof(struct sensorFIFO, data)) /
 				SENSOR_DATA_SIZE * SENSOR_DATA_SIZE;
 		SCP_LOG("obj->SCP_sensorFIFO = %p, wp = %d, rp = %d, size = %d\n", obj->SCP_sensorFIFO,
 			obj->SCP_sensorFIFO->wp, obj->SCP_sensorFIFO->rp, obj->SCP_sensorFIFO->FIFOSize);
@@ -2240,12 +2346,12 @@ static int sensorHub_pm_event(struct notifier_block *notifier, unsigned long pm_
 {
 	switch (pm_event) {
 	case PM_POST_SUSPEND:
-		SCP_LOG("resume bootime=%lld\n", ktime_get_boot_ns());
+		pr_debug("resume ap boottime=%lld\n", ktime_get_boot_ns());
 		WRITE_ONCE(rtc_compensation_suspend, false);
 		sensor_send_timestamp_to_hub();
 		return NOTIFY_DONE;
 	case PM_SUSPEND_PREPARE:
-		SCP_LOG("suspend bootime=%lld\n", ktime_get_boot_ns());
+		pr_debug("suspend ap boottime=%lld\n", ktime_get_boot_ns());
 		WRITE_ONCE(rtc_compensation_suspend, true);
 		return NOTIFY_DONE;
 	default:

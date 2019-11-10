@@ -215,7 +215,7 @@ static void pdp_apollo_set_plane_enabled(struct device *dev,
 #endif
 
 	if (plane > 0) {
-		dev_err(dev,
+		dev_info(dev,
 			"Maximum of 1 plane is supported\n");
 		return;
 	}
@@ -259,7 +259,7 @@ static void pdp_apollo_set_surface(struct device *dev,
 #endif
 
 	if (plane > 0) {
-		dev_err(dev,
+		dev_info(dev,
 			"Maximum of 1 plane is supported\n");
 		return;
 	}

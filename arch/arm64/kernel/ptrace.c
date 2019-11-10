@@ -1247,14 +1247,13 @@ static void tracehook_report_syscall(struct pt_regs *regs,
 	if (dir == PTRACE_SYSCALL_EXIT)
 		tracehook_report_syscall_exit(regs, 0);
 	else if (tracehook_report_syscall_entry(regs))
-		regs->syscallno = ~0UL;
+		regs->syscallno = ~0;
 
 	regs->regs[regno] = saved_reg;
 }
 
 asmlinkage int syscall_trace_enter(struct pt_regs *regs)
 {
-
 	if (test_thread_flag(TIF_SYSCALL_TRACE))
 		tracehook_report_syscall(regs, PTRACE_SYSCALL_ENTER);
 

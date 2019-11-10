@@ -3300,7 +3300,7 @@ __alloc_pages_nodemask(gfp_t gfp_mask, unsigned int order,
 	int alloc_flags = ALLOC_WMARK_LOW|ALLOC_CPUSET|ALLOC_FAIR;
 #endif
 #ifdef CONFIG_DMAUSER_PAGES
-	static DEFINE_RATELIMIT_STATE(dmawarn, (180 * HZ), 1);
+	static bool __section(.data.unlikely) __dmawarned;
 #endif
 	gfp_t alloc_mask; /* The gfp_t that was actually used for allocation */
 	struct alloc_context ac = {
@@ -3390,8 +3390,10 @@ out:
 	 * make sure DMA pages cannot be allocated to non-GFP_DMA users
 	 */
 	if (page && !(gfp_mask & GFP_DMA) && (page_zonenum(page) == OPT_ZONE_DMA)) {
-		if (__ratelimit(&dmawarn))
+		if (unlikely(!__dmawarned)) {
+			__dmawarned = true;
 			aee_kernel_warning("large memory", "out of high-end memory");
+		}
 	}
 #endif
 
@@ -6191,11 +6193,14 @@ static void __setup_per_zone_wmarks(void)
 	unsigned long lowmem_pages = 0;
 	struct zone *zone;
 	unsigned long flags;
+	unsigned long zmc_pages = 0;
 
 	/* Calculate total number of !ZONE_HIGHMEM pages */
 	for_each_zone(zone) {
-		if (IS_ZONE_MOVABLE_CMA_ZONE(zone))
+		if (IS_ZONE_MOVABLE_CMA_ZONE(zone)) {
+			zmc_pages += zone->managed_pages;
 			continue;
+		}
 		if (!is_highmem(zone))
 			lowmem_pages += zone->managed_pages;
 	}
@@ -6207,10 +6212,7 @@ static void __setup_per_zone_wmarks(void)
 		min = (u64)pages_min * zone->managed_pages;
 		do_div(min, lowmem_pages);
 		low = (u64)pages_low * zone->managed_pages;
-		if (IS_ENABLED(CONFIG_ZONE_MOVABLE_CMA))
-			do_div(low, lowmem_pages);
-		else
-			do_div(low, vm_total_pages);
+		do_div(low, vm_total_pages - zmc_pages);
 
 		if (is_highmem(zone)) {
 			/*

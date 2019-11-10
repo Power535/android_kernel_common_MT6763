@@ -862,6 +862,8 @@ static char *pwr_ctrl_str[PWR_MAX_COUNT] = {
 	[PWR_MP1_CPU2_WFI_EN] = "mp1_cpu2_wfi_en",
 	/* MP1_CPU3_WFI_EN */
 	[PWR_MP1_CPU3_WFI_EN] = "mp1_cpu3_wfi_en",
+
+	[PWR_MD_DDR_EN_0_DBC_LEN] = "md_ddr_en_0_dbc_len",
 };
 
 /**************************************
@@ -1181,6 +1183,10 @@ static ssize_t show_pwr_ctrl(int id, const struct pwr_ctrl *pwrctrl, char *buf)
 	p += sprintf(p, "mp1_cpu3_wfi_en = 0x%zx\n",
 			mt_secure_call(MTK_SIP_KERNEL_SPM_GET_PWR_CTRL_ARGS,
 				id, PWR_MP1_CPU3_WFI_EN, 0));
+
+	p += sprintf(p, "md_ddr_en_0_dbc_len = 0x%zx\n",
+			mt_secure_call(MTK_SIP_KERNEL_SPM_GET_PWR_CTRL_ARGS,
+				id, PWR_MD_DDR_EN_0_DBC_LEN, 0));
 
 	WARN_ON(p - buf >= PAGE_SIZE);
 
@@ -2657,6 +2663,10 @@ static ssize_t store_pwr_ctrl(int id, struct pwr_ctrl *pwrctrl, const char *buf,
 		pwrctrl->mp1_cpu3_wfi_en = val;
 		mt_secure_call(MTK_SIP_KERNEL_SPM_PWR_CTRL_ARGS,
 				id, PWR_MP1_CPU3_WFI_EN, val);
+	} else if (!strcmp(cmd, pwr_ctrl_str[PWR_MD_DDR_EN_0_DBC_LEN])) { /* MP1_CPU3_WFI_EN */
+		pwrctrl->md_ddr_en_0_dbc_len = val;
+		mt_secure_call(MTK_SIP_KERNEL_SPM_PWR_CTRL_ARGS,
+				id, PWR_MD_DDR_EN_0_DBC_LEN, val);
 	}
 
 	return count;

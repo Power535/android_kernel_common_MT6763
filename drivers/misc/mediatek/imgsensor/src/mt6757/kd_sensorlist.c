@@ -325,7 +325,7 @@ CAMERA_DUAL_CAMERA_SENSOR_ENUM g_invokeSocketIdx[KDIMGSENSOR_MAX_INVOKE_DRIVERS]
 	DUAL_CAMERA_NONE_SENSOR,
 	DUAL_CAMERA_NONE_SENSOR};
 char g_invokeSensorNameStr[KDIMGSENSOR_MAX_INVOKE_DRIVERS][32] = {
-		KDIMGSENSOR_NOSENSOR,
+		{KDIMGSENSOR_NOSENSOR,
 		KDIMGSENSOR_NOSENSOR,
 		KDIMGSENSOR_NOSENSOR};
 #else
@@ -1400,10 +1400,22 @@ MUINT32 kd_MultiSensorOpen(void)
 				if (g_invokeSocketIdx[i] == DUAL_CAMERA_MAIN_SENSOR) {
 					ccuSensorInfo.slave_addr = (g_pstI2Cclient->addr  << 1);
 					ccuSensorInfo.sensor_name_string = (char *)(g_invokeSensorNameStr[i]);
+					if (g_pstI2Cclient)
+						ccuSensorInfo.i2c_id =
+							(((struct mt_i2c *) i2c_get_adapdata(
+								g_pstI2Cclient->adapter))->id);
+					else
+						ccuSensorInfo.i2c_id = -1;
 					ccu_set_sensor_info(g_invokeSocketIdx[i], &ccuSensorInfo);
 				} else if (g_invokeSocketIdx[i] == DUAL_CAMERA_SUB_SENSOR) {
 					ccuSensorInfo.slave_addr = (g_pstI2Cclient2->addr  << 1);
 					ccuSensorInfo.sensor_name_string = (char *)(g_invokeSensorNameStr[i]);
+					if (g_pstI2Cclient2)
+						ccuSensorInfo.i2c_id =
+							(((struct mt_i2c *) i2c_get_adapdata(
+								g_pstI2Cclient2->adapter))->id);
+					else
+						ccuSensorInfo.i2c_id = -1;
 					ccu_set_sensor_info(g_invokeSocketIdx[i], &ccuSensorInfo);
 				}
 #endif
@@ -2158,8 +2170,6 @@ static inline int adopt_CAMERA_HW_CheckIsAlive(void)
 /*******************************************************************************
  * adopt_CAMERA_HW_GetResolution
  ********************************************************************************/
-#define FEATURE_CONTROL_MAX_DATA_SIZE 128000
-
 static inline int adopt_CAMERA_HW_GetResolution(void *pBuf)
 {
 	/* ToDo: remove print */
@@ -2314,7 +2324,7 @@ static inline int adopt_CAMERA_HW_GetInfo(void *pBuf)
 				 sizeof(MSDK_SENSOR_INFO_STRUCT))) {
 			PK_DBG("[CAMERA_HW][info] ioctl copy to user failed\n");
 #ifdef MTK_SUB2_IMGSENSOR
-			for (j = 0; j < 3; j++) {
+			for (j = 0; j < 3; i++) {
 #else
 			for (j = 0; j < 2; j++) {
 #endif
@@ -2333,7 +2343,7 @@ static inline int adopt_CAMERA_HW_GetInfo(void *pBuf)
 				 sizeof(MSDK_SENSOR_CONFIG_STRUCT))) {
 			PK_DBG("[CAMERA_HW][config] ioctl copy to user failed\n");
 #ifdef MTK_SUB2_IMGSENSOR
-			for (j = 0; j < 3; j++) {
+			for (j = 0; j < 3; i++) {
 #else
 			for (j = 0; j < 2; j++) {
 #endif
@@ -2449,7 +2459,7 @@ static inline int adopt_CAMERA_HW_GetInfo2(void *pBuf)
 		pConfig2[0] == NULL || pConfig2[1] == NULL || pConfig2[2] == NULL ||
 		pConfig3[0] == NULL || pConfig3[1] == NULL || pConfig3[2] == NULL ||
 		pConfig4[0] == NULL || pConfig4[1] == NULL || pConfig4[2] == NULL ||
-		psensorResolution[0] == NULL || psensorResolution[1] == NULL || psensorResolution[2] == NULL ||
+		psensorResolution[0] == NULL || psensorResolution[1] == NULL || psensorResolution[3] == NULL ||
 		pSensorInfo == NULL)
 #else
 	if (pConfig[0] == NULL || pConfig[1] == NULL || pConfig1[0] == NULL || pConfig1[1] == NULL
@@ -2951,12 +2961,6 @@ static inline int adopt_CAMERA_HW_FeatureControl(void *pBuf)
 			return -EFAULT;
 		}
 
-		/* data size exam */
-		if (FeatureParaLen > FEATURE_CONTROL_MAX_DATA_SIZE) {
-			PK_ERR(" exceed data size limitation\n");
-			return -EFAULT;
-		}
-
 		pFeaturePara = kmalloc(FeatureParaLen, GFP_KERNEL);
 		if (pFeaturePara == NULL) {
 			PK_ERR(" ioctl allocate mem failed\n");
@@ -3389,16 +3393,12 @@ static inline int adopt_CAMERA_HW_FeatureControl(void *pBuf)
 	case SENSOR_FEATURE_SET_PDAF_REG_SETTING:
 		{
 			unsigned long long *pFeaturePara_64 = (unsigned long long *)pFeaturePara;
-			kal_uint32 u4RegLen = (*pFeaturePara_64);
-			void *usr_ptr_Reg = (void *)(uintptr_t) (*(pFeaturePara_64 + 1));
-			kal_uint32 *pReg = NULL;
 
-			/* buffer size exam */
-			if ((sizeof(kal_uint8) * u4RegLen) > FEATURE_CONTROL_MAX_DATA_SIZE) {
-				kfree(pFeaturePara);
-				PK_ERR(" buffer size (%u) is too large\n", u4RegLen);
-				return -EINVAL;
-			}
+			kal_uint32 u4RegLen = (*pFeaturePara_64);
+
+			void *usr_ptr_Reg = (void *)(uintptr_t) (*(pFeaturePara_64 + 1));
+
+			kal_uint32 *pReg = NULL;
 
 			pReg = kmalloc_array(u4RegLen, sizeof(kal_uint8), GFP_KERNEL);
 
@@ -3619,16 +3619,7 @@ static inline int adopt_CAMERA_HW_FeatureControl(void *pBuf)
 
 			unsigned long long *pFeaturePara_64 = (unsigned long long *)pFeaturePara;
 			void *usr_ptr = (void *)(uintptr_t) (*(pFeaturePara_64 + 1));
-			kal_uint32 buf_sz = (kal_uint32) (*(pFeaturePara_64 + 2));
 #if 1
-			/* buffer size exam */
-			if (buf_sz > PDAF_DATA_SIZE) {
-				kfree(pFeaturePara);
-				PK_ERR(" buffer size (%u) can't larger than %d bytes\n",
-					  buf_sz, PDAF_DATA_SIZE);
-				return -EINVAL;
-			}
-
 			pPdaf_data = kmalloc(sizeof(char) * PDAF_DATA_SIZE, GFP_KERNEL);
 			if (pPdaf_data == NULL) {
 				kfree(pFeaturePara);
@@ -3651,9 +3642,10 @@ static inline int adopt_CAMERA_HW_FeatureControl(void *pBuf)
 				PK_DBG("[CAMERA_HW]ERROR:NULL g_pSensorFunc\n");
 			}
 
-			if (copy_to_user((void __user *)usr_ptr, (void *)pPdaf_data, buf_sz))
+			if (copy_to_user((void __user *)usr_ptr, (void *)pPdaf_data,
+					 (kal_uint32) (*(pFeaturePara_64 + 2)))) {
 				PK_DBG("[CAMERA_HW]ERROR: copy_to_user fail\n");
-
+			}
 			kfree(pPdaf_data);
 			*(pFeaturePara_64 + 1) = (uintptr_t) usr_ptr;
 
@@ -4440,7 +4432,7 @@ static long CAMERA_HW_Ioctl_Compat(struct file *filp, unsigned int cmd, unsigned
 			PK_DBG("[CAMERA SENSOR] KDIMGSENSORIOC_X_GETRESOLUTION2\n");
 
 			data32 = compat_ptr(arg);
-			data = compat_alloc_user_space(sizeof(*data));
+			data = compat_alloc_user_space(sizeof(data));
 			if (data == NULL)
 				return -EFAULT;
 			PK_DBG("[CAMERA SENSOR] compat_get_acdk_sensor_resolution_info_struct\n");

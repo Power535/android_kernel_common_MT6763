@@ -88,7 +88,7 @@
 #include "disp_rect.h"
 #include "disp_partial.h"
 #include "ddp_aal.h"
-#include "ddp_gamma.h"
+
 #define MMSYS_CLK_LOW (0)
 #define MMSYS_CLK_HIGH (1)
 
@@ -5718,7 +5718,6 @@ static int primary_frame_cfg_input(struct disp_frame_cfg_t *cfg)
 	unsigned int wdma_mva = 0;
 	disp_path_handle disp_handle;
 	struct cmdqRecStruct *cmdq_handle;
-	struct disp_ccorr_config m_ccorr_config = cfg->ccorr_config;
 
 	if (gTriggerDispMode > 0)
 		return 0;
@@ -5754,12 +5753,6 @@ static int primary_frame_cfg_input(struct disp_frame_cfg_t *cfg)
 		primary_show_basic_debug_info(cfg);
 
 	_config_ovl_input(cfg, disp_handle, cmdq_handle);
-	/* set ccorr matrix */
-	if (m_ccorr_config.is_dirty) {
-		disp_ccorr_set_color_matrix(cmdq_handle,
-			m_ccorr_config.color_matrix,
-			m_ccorr_config.mode);
-	}
 
 	if (primary_display_is_decouple_mode() && !primary_display_is_mirror_mode()) {
 		pgc->dc_buf_id++;
@@ -5800,17 +5793,11 @@ int primary_display_config_input_multiple(struct disp_session_input_config *sess
 	if (frame_cfg == NULL)
 		return -ENOMEM;
 
-	frame_cfg->session_id = primary_session_id;
+	frame_cfg->session_id = session_input->session_id;
 	frame_cfg->setter = session_input->setter;
 	frame_cfg->input_layer_num = session_input->config_layer_num;
 	frame_cfg->overlap_layer_num = 4;
-	frame_cfg->ccorr_config = session_input->ccorr_config;
 	memcpy(frame_cfg->input_cfg, session_input->config, sizeof(frame_cfg->input_cfg));
-
-	if (disp_validate_ioctl_params(frame_cfg)) {
-		ret = -EINVAL;
-		goto out;
-	}
 
 	_primary_path_lock(__func__);
 
@@ -5820,7 +5807,6 @@ int primary_display_config_input_multiple(struct disp_session_input_config *sess
 
 	_primary_path_unlock(__func__);
 
-out:
 	kfree(frame_cfg);
 	return ret;
 }

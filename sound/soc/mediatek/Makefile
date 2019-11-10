@@ -83,4 +83,4 @@ endif
 # End CONFIG_MTK_SND_SOC_NEW_ARCH
 endif
 
-obj-$(CONFIG_SND_SOC_MTK_BTCVSD) += common_int/
+obj-$(CONFIG_SND_SOC_MTK_BTCVSD) += common/

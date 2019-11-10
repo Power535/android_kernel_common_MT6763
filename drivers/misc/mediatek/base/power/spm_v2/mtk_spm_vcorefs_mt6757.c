@@ -317,10 +317,6 @@ static void __go_to_vcore_dvfs(u32 spm_flags, u32 spm_data)
 		pcm_index = DYNA_LOAD_PCM_SODI;
 	else
 		pcm_index = DYNA_LOAD_PCM_SODI_LPDDR4;
-#if defined(CONFIG_MTK_PMIC_CHIP_MT6355)
-	if (get_ddr_type() == TYPE_LPDDR4)
-		pcm_index = DYNA_LOAD_PCM_SODI_LPDDR4_2400;
-#endif
 
 	if (dyna_load_pcm[pcm_index].ready)
 		pcmdesc = &(dyna_load_pcm[pcm_index].desc);

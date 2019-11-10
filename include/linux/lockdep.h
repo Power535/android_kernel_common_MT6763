@@ -530,8 +530,6 @@ do {									\
 	lock_acquire(&(lock)->dep_map, 0, 0, 0, 1, NULL, _THIS_IP_);	\
 	lock_release(&(lock)->dep_map, 0, _THIS_IP_);			\
 } while (0)
-
-
 /*
  * might_lock_read() is only invoked by might_fault() and the
  * problem is might_fault() generates a new lock dependency.

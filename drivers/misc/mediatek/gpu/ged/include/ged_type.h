@@ -103,7 +103,7 @@ typedef enum {
 #define GED_BRIDGE_IN_LOGBUF_SIZE 320
 enum {
 	/* bit 0~7 reserved for internal used */
-	GED_RESVERED                = 0xFF,
+	GED_RESERVED                = 0xFF,
 
 	/* log with a prefix kernel time */
 	GED_LOG_ATTR_TIME           = 0x100,

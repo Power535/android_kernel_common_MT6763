@@ -622,11 +622,33 @@ const char *cmdq_virtual_module_from_event_id(const int32_t event,
 		break;
 
 	case CMDQ_EVENT_DPE_EOF:
+		module = "DPE";
+		group = CMDQ_GROUP_ISP;
+		break;
+
 	case CMDQ_EVENT_RSC_EOF:
+		module = "RSC";
+		group = CMDQ_GROUP_ISP;
+		break;
+
+	case CMDQ_EVENT_WPE_A_EOF:
+		module = "WPE";
+		group = CMDQ_GROUP_ISP;
+		break;
+
+	case CMDQ_EVENT_MFB_DONE:
+		module = "MFB";
+		group = CMDQ_GROUP_ISP;
+		break;
+
+	case CMDQ_EVENT_FDVT_DONE:
+		module = "FDVT";
+		group = CMDQ_GROUP_ISP;
+		break;
+
 	case CMDQ_EVENT_GEPF_EOF:
 	case CMDQ_EVENT_GEPF_TEMP_EOF:
 	case CMDQ_EVENT_GEPF_BYPASS_EOF:
-	case CMDQ_EVENT_WPE_A_EOF:
 	case CMDQ_EVENT_EAF_EOF:
 		module = "DIP";
 		group = CMDQ_GROUP_ISP;

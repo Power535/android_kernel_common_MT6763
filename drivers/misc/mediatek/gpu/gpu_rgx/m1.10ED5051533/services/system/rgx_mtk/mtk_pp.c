@@ -79,7 +79,6 @@ static void MTKPP_PrintRingBuffer(MTK_PROC_PRINT_DATA *data,
 
 static int MTKPP_PrintTime(char *buf, int n)
 {
-	/* copy & modify from ./kernel/printk.c */
 	unsigned long long t;
 	unsigned long nanosec_rem;
 

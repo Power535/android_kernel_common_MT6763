@@ -26,10 +26,10 @@ endif
 
 ifeq ($(CONFIG_MTK_FPSGO_FBT_UX),y)
         obj-y += fbc.o
-else
-        ifneq ($(wildcard $(srctree)/drivers/misc/mediatek/performance/perfmgr/$(MTK_PLATFORM)/),)
-            obj-y += touch_boost.o
-        endif
+#else
+#        ifneq ($(wildcard $(srctree)/drivers/misc/mediatek/performance/perfmgr/$(MTK_PLATFORM)/),)
+#            obj-y += touch_boost.o
+#        endif
 endif
 
 ccflags-y += \

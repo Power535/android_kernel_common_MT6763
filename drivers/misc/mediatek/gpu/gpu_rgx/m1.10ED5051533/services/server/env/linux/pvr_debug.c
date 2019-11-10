@@ -149,7 +149,7 @@ void PVRSRVDebugPrintfDumpCCB(void)
 			continue;
 		}
 
-		printk(KERN_ERR "%s:%d: (%ld.%ld, tid=%u, pid=%u) %s\n",
+		pr_info( "%s:%d: (%ld.%ld, tid=%u, pid=%u) %s\n",
 			   psDebugCCBEntry->pszFile,
 			   psDebugCCBEntry->iLine,
 			   (long)psDebugCCBEntry->sTimeVal.tv_sec,
@@ -323,11 +323,11 @@ void PVRSRVReleasePrintf(const IMG_CHAR *pszFormat, ...)
 
 	if (VBAppend(pszBuf, ui32BufSiz, pszFormat, vaArgs))
 	{
-		printk(KERN_ERR "PVR_K:(Message Truncated): %s\n", pszBuf);
+		pr_info( "PVR_K:(Message Truncated): %s\n", pszBuf);
 	}
 	else
 	{
-		printk(KERN_ERR "%s\n", pszBuf);
+		pr_info( "%s\n", pszBuf);
 	}
 
 	ReleaseBufferLock(ulLockFlags);
@@ -362,11 +362,11 @@ void PVRSRVTrace(const IMG_CHAR *pszFormat, ...)
 
 	if (VBAppend(pszBuf, ui32BufSiz, pszFormat, VArgs))
 	{
-		printk(KERN_ERR "PVR_K:(Message Truncated): %s\n", pszBuf);
+		pr_info( "PVR_K:(Message Truncated): %s\n", pszBuf);
 	}
 	else
 	{
-		printk(KERN_ERR "%s\n", pszBuf);
+		pr_info( "%s\n", pszBuf);
 	}
 
 	ReleaseBufferLock(ulLockFlags);
@@ -486,7 +486,7 @@ void PVRSRVDebugPrintf(IMG_UINT32 ui32DebugLevel,
 
 		if (VBAppend(pszBuf, ui32BufSiz, pszFormat, vaArgs))
 		{
-			printk(KERN_ERR "PVR_K:(Message Truncated): %s\n", pszBuf);
+			pr_info( "PVR_K:(Message Truncated): %s\n", pszBuf);
 		}
 		else
 		{
@@ -519,7 +519,7 @@ void PVRSRVDebugPrintf(IMG_UINT32 ui32DebugLevel,
 
 			if (bTruncated)
 			{
-				printk(KERN_ERR "PVR_K:(Message Truncated): %s\n", pszBuf);
+				pr_info( "PVR_K:(Message Truncated): %s\n", pszBuf);
 			}
 			else
 			{
@@ -529,7 +529,7 @@ void PVRSRVDebugPrintf(IMG_UINT32 ui32DebugLevel,
 				}
 				else
 				{
-					printk(KERN_ERR "%s\n", pszBuf);
+					pr_info( "%s\n", pszBuf);
 				}
 			}
 		}

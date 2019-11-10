@@ -279,7 +279,7 @@ static int mtk_smi_larb_probe(struct platform_device *pdev)
 	of_node_put(smi_node);
 	if (smi_pdev) {
 		/* wait for smi probe done to get the smi common dev. */
-		if (!(&smi_pdev->dev))
+		if (!platform_get_drvdata(smi_pdev))
 			return -EPROBE_DEFER;
 
 		larb->smi_common_dev = &smi_pdev->dev;

@@ -64,7 +64,7 @@
 #define CMDQ_INITIAL_CMD_BLOCK_SIZE     (PAGE_SIZE)
 #define CMDQ_INST_SIZE                  (2 * sizeof(uint32_t))	/* instruction is 64-bit */
 #define CMDQ_CMD_BUFFER_SIZE		(PAGE_SIZE - 32 * CMDQ_INST_SIZE)
-#define CMDQ_DMA_POOL_COUNT		64
+#define CMDQ_DMA_POOL_COUNT		256
 
 #define CMDQ_MAX_LOOP_COUNT             (1000000)
 #define CMDQ_MAX_INST_CYCLE             (27)
@@ -423,6 +423,9 @@ struct cmdqSecDataStruct {
 
 	/* ISP metadata for secure camera */
 	struct cmdqSecIspMeta ispMeta;
+
+	/* client extension feature */
+	uint64_t extension;
 };
 
 struct cmdq_v3_replace_struct {

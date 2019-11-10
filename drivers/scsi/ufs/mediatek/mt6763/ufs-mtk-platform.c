@@ -98,6 +98,28 @@ void ufs_mtk_pltfrm_gpio_trigger_init(struct ufs_hba *hba)
 }
 #endif
 
+int ufs_mtk_pltfrm_ufs_device_reset(struct ufs_hba *hba)
+{
+	mt_secure_call(MTK_SIP_KERNEL_UFS_CTL, 2, 0, 0);
+
+	/*
+	 * The reset signal is active low.
+	 * The UFS device shall detect more than or equal to 1us of positive
+	 * or negative RST_n pulse width.
+	 * To be on safe side, keep the reset low for at least 10us.
+	 */
+	usleep_range(10, 15);
+
+	mt_secure_call(MTK_SIP_KERNEL_UFS_CTL, 2, 1, 0);
+
+	/* same as assert, wait for at least 10us after deassert */
+	usleep_range(10, 15);
+
+	dev_info(hba->dev, "%s: UFS device reset done\n", __func__);
+
+	return 0;
+}
+
 /*
  * In early-porting stage, because of no bootrom, something finished by bootrom shall be finished here instead.
  * Returns:
@@ -161,9 +183,26 @@ int ufs_mtk_pltfrm_deepidle_check_h8(void)
 	}
 
 	if (tmp == VENDOR_POWERSTATE_HIBERNATE) {
-		/* delay 100us before DeepIdle/SODI disable XO_UFS for Toshiba device */
-		if (ufs_mtk_hba->dev_quirks & UFS_DEVICE_QUIRK_DELAY_BEFORE_DISABLE_REF_CLK)
+		/*
+		 * Delay before disable XO_UFS: H8 -> delay A -> disable XO_UFS
+		 *		delayA
+		 * Hynix	30us
+		 * Samsung	1us
+		 * Toshiba	100us
+		 */
+		switch (ufs_mtk_hba->wmanufacturerid) {
+		case UFS_VENDOR_TOSHIBA:
 			udelay(100);
+			break;
+		case UFS_VENDOR_SKHYNIX:
+			udelay(30);
+			break;
+		case UFS_VENDOR_SAMSUNG:
+			udelay(1);
+			break;
+		default:
+			break;
+		}
 		/* Disable MPHY 26MHz ref clock in H8 mode */
 		/* SSPM project will disable MPHY 26MHz ref clock in SSPM deepidle/SODI IPI handler*/
 	#if !defined(CONFIG_MTK_TINYSYS_SSPM_SUPPORT)

@@ -210,7 +210,7 @@ static int pdp_mode_id(struct adf_pdp_device *pdp, u32 height, u32 width)
 		if (tdata->h_display == width && tdata->v_display == height)
 			return i;
 	}
-	dev_err(&pdp->pdev->dev, "Failed to find matching mode for %dx%d\n",
+	dev_info(&pdp->pdev->dev, "Failed to find matching mode for %dx%d\n",
 		width, height);
 	return -1;
 }
@@ -277,7 +277,7 @@ static void pdp_write_i2c(struct adf_pdp_device *pdp, u32 reg_addr, u32 data)
 	}
 
 	if (i == I2C_TIMEOUT)
-		dev_err(&pdp->pdev->dev, "i2c write timeout\n");
+		dev_info(&pdp->pdev->dev, "i2c write timeout\n");
 }
 
 static u32 pdp_read_i2c(struct adf_pdp_device *pdp, u32 reg_addr)
@@ -294,7 +294,7 @@ static u32 pdp_read_i2c(struct adf_pdp_device *pdp, u32 reg_addr)
 	}
 
 	if (i == I2C_TIMEOUT) {
-		dev_err(&pdp->pdev->dev, "i2c read timeout\n");
+		dev_info(&pdp->pdev->dev, "i2c read timeout\n");
 		return 0;
 	}
 	return ioread32(pdp->i2c_regs + 0x10);
@@ -374,7 +374,7 @@ static void pdp_enable_ints(struct adf_pdp_device *pdp)
 	err = tc_enable_interrupt(pdp->pdev->dev.parent,
 		TC_INTERRUPT_TC5_PDP);
 	if (err) {
-		dev_err(&pdp->pdev->dev,
+		dev_info(&pdp->pdev->dev,
 			"tc_enable_interrupt failed (%d)\n", err);
 	}
 }
@@ -391,7 +391,7 @@ static void pdp_disable_ints(struct adf_pdp_device *pdp)
 	err = tc_disable_interrupt(pdp->pdev->dev.parent,
 		TC_INTERRUPT_TC5_PDP);
 	if (err) {
-		dev_err(&pdp->pdev->dev,
+		dev_info(&pdp->pdev->dev,
 			"tc_disable_interrupt failed (%d)\n", err);
 	}
 }
@@ -419,7 +419,7 @@ static void pdp_post(struct adf_device *adf_dev, struct adf_post *cfg,
 	if (pdp->current_timings->h_display != cfg->bufs[0].w ||
 		pdp->current_timings->v_display != cfg->bufs[0].h ||
 		pdp->current_drm_format != cfg->bufs[0].format) {
-		dev_err(&pdp->pdev->dev, "Unsupported configuration on post\n");
+		dev_info(&pdp->pdev->dev, "Unsupported configuration on post\n");
 		return;
 	}
 
@@ -451,7 +451,7 @@ static void pdp_post(struct adf_device *adf_dev, struct adf_post *cfg,
 
 	if (wait_event_timeout(pdp->vsync_wait_queue,
 		pdp_vsync_triggered(pdp), timeout) == 0) {
-		dev_err(&pdp->pdev->dev, "Post VSync wait timeout");
+		dev_info(&pdp->pdev->dev, "Post VSync wait timeout");
 		/* Undefined behaviour if this times out */
 	}
 
@@ -545,9 +545,9 @@ static int pdp_unblank_hdmi(struct adf_pdp_device *pdp)
 	msleep(1000);
 	reg_value = pdp_read_i2c(pdp, 0x41);
 	if (reg_value == 0x10) {
-		dev_err(&pdp->pdev->dev, "i2c: ADV7511 powered up\n");
+		dev_info(&pdp->pdev->dev, "i2c: ADV7511 powered up\n");
 	} else {
-		dev_err(&pdp->pdev->dev, "i2c: Failed to power up ADV7511\n");
+		dev_info(&pdp->pdev->dev, "i2c: Failed to power up ADV7511\n");
 		err = -EFAULT;
 	}
 
@@ -570,14 +570,14 @@ static void pdp_enable_hdmi(struct adf_pdp_device *pdp)
 
 	reg_value = pdp_read_i2c(pdp, 0xf5);
 	if (reg_value != 0x75) {
-		dev_err(&pdp->pdev->dev, "i2c: 1st register read failed: %x\n",
+		dev_info(&pdp->pdev->dev, "i2c: 1st register read failed: %x\n",
 			reg_value);
 		goto err_out;
 	}
 
 	reg_value = pdp_read_i2c(pdp, 0xf6);
 	if (reg_value != 0x11) {
-		dev_err(&pdp->pdev->dev, "i2c: 2nd register read failed: %x\n",
+		dev_info(&pdp->pdev->dev, "i2c: 2nd register read failed: %x\n",
 			reg_value);
 		goto err_out;
 	}
@@ -586,12 +586,12 @@ static void pdp_enable_hdmi(struct adf_pdp_device *pdp)
 	for (i = 0; i < 50; i++) {
 		reg_value = pdp_read_i2c(pdp, 0x42);
 		if (reg_value == 0x70) {
-			dev_err(&pdp->pdev->dev, "i2c: Hot Plug and Monitor Sense detected ...\n");
+			dev_info(&pdp->pdev->dev, "i2c: Hot Plug and Monitor Sense detected ...\n");
 			break;
 		} else if (reg_value == 0x50) {
-			dev_err(&pdp->pdev->dev, "i2c: Only Hot Plug detected ...\n");
+			dev_info(&pdp->pdev->dev, "i2c: Only Hot Plug detected ...\n");
 		} else if (reg_value == 0x03) {
-			dev_err(&pdp->pdev->dev, "i2c: Only Monitor Sense detected ...\n");
+			dev_info(&pdp->pdev->dev, "i2c: Only Monitor Sense detected ...\n");
 		}
 	}
 
@@ -643,13 +643,13 @@ static void pdp_enable_hdmi(struct adf_pdp_device *pdp)
 	for (i = 0; i < 50; i++) {
 		reg_value = pdp_read_i2c(pdp, 0x3e);
 		if (reg_value == 0x10) {
-			dev_err(&pdp->pdev->dev, "i2c: VIC detected as 720P, 60 Hz, 16:9...\n");
+			dev_info(&pdp->pdev->dev, "i2c: VIC detected as 720P, 60 Hz, 16:9...\n");
 			break;
 		}
 	}
 
 	if (i == 50)
-		dev_err(&pdp->pdev->dev, "i2c: Desired VIC not detected\n");
+		dev_info(&pdp->pdev->dev, "i2c: Desired VIC not detected\n");
 
 	/* Write to PD register again */
 	pdp_write_i2c(pdp, 0x41, 0x10);
@@ -672,7 +672,7 @@ static int pdp_modeset(struct adf_interface *intf,
 	tdata = pdp_timing_data(pdp, mode_id);
 
 	if (!tdata) {
-		dev_err(&pdp->pdev->dev, "Failed to find mode for %ux%u\n",
+		dev_info(&pdp->pdev->dev, "Failed to find mode for %ux%u\n",
 			mode->hdisplay, mode->vdisplay);
 		err = -ENXIO;
 		goto err_out;
@@ -851,13 +851,13 @@ static int pdp_alloc_simple_buffer(struct adf_interface *intf, u16 w, u16 h,
 		(1 << pdp->pdata->ion_heap_id), 0);
 	if (IS_ERR(hdl)) {
 		err = PTR_ERR(hdl);
-		dev_err(&pdp->pdev->dev, "ion_alloc failed (%d)\n", err);
+		dev_info(&pdp->pdev->dev, "ion_alloc failed (%d)\n", err);
 		goto err_out;
 	}
 	*dma_buf = ion_share_dma_buf(pdp->ion_client, hdl);
 	if (IS_ERR(*dma_buf)) {
 		err = PTR_ERR(hdl);
-		dev_err(&pdp->pdev->dev,
+		dev_info(&pdp->pdev->dev,
 			"ion_share_dma_buf failed (%d)\n", err);
 		goto err_free_buffer;
 	}
@@ -938,7 +938,7 @@ adf_pdp_release(struct adf_obj *obj, struct inode *inode, struct file *file)
 	 */
 	release_fence = adf_device_post(dev, NULL, 0, NULL, 0, NULL, 0);
 	if (IS_ERR_OR_NULL(release_fence)) {
-		dev_err(dev->dev,
+		dev_info(dev->dev,
 			"Failed to queue null flip command (err=%d).\n",
 			(int)PTR_ERR(release_fence));
 		return;
@@ -1044,7 +1044,7 @@ static int adf_pdp_probe_device(struct platform_device *pdev)
 
 	err = pci_enable_device(pci_dev);
 	if (err) {
-		dev_err(&pdev->dev,
+		dev_info(&pdev->dev,
 			"Failed to enable PDP pci device (%d)\n", err);
 		goto err_out;
 	}
@@ -1056,7 +1056,7 @@ static int adf_pdp_probe_device(struct platform_device *pdev)
 	pdp->ion_client = ion_client_create(pdata->ion_device, "adf_pdp");
 	if (IS_ERR(pdp->ion_client)) {
 		err = PTR_ERR(pdp->ion_client);
-		dev_err(&pdev->dev,
+		dev_info(&pdev->dev,
 			"Failed to create PDP ION client (%d)\n", err);
 		goto err_disable_pci;
 	}
@@ -1067,7 +1067,7 @@ static int adf_pdp_probe_device(struct platform_device *pdev)
 	pdp->regs = devm_ioremap_resource(&pdev->dev, registers);
 	if (IS_ERR(pdp->regs)) {
 		err = PTR_ERR(pdp->regs);
-		dev_err(&pdev->dev, "Failed to map PDP registers (%d)\n", err);
+		dev_info(&pdev->dev, "Failed to map PDP registers (%d)\n", err);
 		goto err_destroy_ion_client;
 	}
 	pdp->regs_size = resource_size(registers);
@@ -1078,7 +1078,7 @@ static int adf_pdp_probe_device(struct platform_device *pdev)
 	pdp->fbdc_regs = devm_ioremap_resource(&pdev->dev, registers);
 	if (IS_ERR(pdp->fbdc_regs)) {
 		err = PTR_ERR(pdp->fbdc_regs);
-		dev_err(&pdev->dev, "Failed to map PDP fbdc registers (%d)\n",
+		dev_info(&pdev->dev, "Failed to map PDP fbdc registers (%d)\n",
 			err);
 		goto err_destroy_ion_client;
 	}
@@ -1090,7 +1090,7 @@ static int adf_pdp_probe_device(struct platform_device *pdev)
 	pdp->i2c_regs = devm_ioremap_resource(&pdev->dev, registers);
 	if (IS_ERR(pdp->i2c_regs)) {
 		err = PTR_ERR(pdp->i2c_regs);
-		dev_err(&pdev->dev, "Failed to map ADV5711 i2c registers (%d)\n",
+		dev_info(&pdev->dev, "Failed to map ADV5711 i2c registers (%d)\n",
 			err);
 		goto err_destroy_ion_client;
 	}
@@ -1099,7 +1099,7 @@ static int adf_pdp_probe_device(struct platform_device *pdev)
 	core_id = pdp_read_reg(pdp, PVR5__PDP_PVR_PDP_CORE_ID);
 	core_rev = pdp_read_reg(pdp, PVR5__PDP_PVR_PDP_CORE_REV);
 
-	dev_err(&pdev->dev, "pdp2 core id/rev: %d.%d.%d/%d.%d.%d\n",
+	dev_info(&pdev->dev, "pdp2 core id/rev: %d.%d.%d/%d.%d.%d\n",
 		(core_id & PVR5__GROUP_ID_MASK) >> PVR5__GROUP_ID_SHIFT,
 		(core_id & PVR5__CORE_ID_MASK) >> PVR5__CORE_ID_SHIFT,
 		(core_id & PVR5__CONFIG_ID_MASK) >> PVR5__CONFIG_ID_SHIFT,
@@ -1111,7 +1111,7 @@ static int adf_pdp_probe_device(struct platform_device *pdev)
 	err = adf_device_init(&pdp->adf_device, &pdp->pdev->dev,
 		&adf_pdp_device_ops, "pdp_device");
 	if (err) {
-		dev_err(&pdev->dev, "Failed to init ADF device (%d)\n", err);
+		dev_info(&pdev->dev, "Failed to init ADF device (%d)\n", err);
 		goto err_destroy_ion_client;
 	}
 
@@ -1119,21 +1119,21 @@ static int adf_pdp_probe_device(struct platform_device *pdev)
 		ADF_INTF_DVI, 0, ADF_INTF_FLAG_PRIMARY, &adf_pdp_interface_ops,
 		"pdp_interface");
 	if (err) {
-		dev_err(&pdev->dev, "Failed to init ADF interface (%d)\n", err);
+		dev_info(&pdev->dev, "Failed to init ADF interface (%d)\n", err);
 		goto err_destroy_adf_device;
 	}
 
 	err = adf_overlay_engine_init(&pdp->adf_overlay, &pdp->adf_device,
 		&adf_pdp_overlay_ops, "pdp_overlay");
 	if (err) {
-		dev_err(&pdev->dev, "Failed to init ADF overlay (%d)\n", err);
+		dev_info(&pdev->dev, "Failed to init ADF overlay (%d)\n", err);
 		goto err_destroy_adf_interface;
 	}
 
 	err = adf_attachment_allow(&pdp->adf_device, &pdp->adf_overlay,
 		&pdp->adf_interface);
 	if (err) {
-		dev_err(&pdev->dev, "Failed to attach overlay (%d)\n", err);
+		dev_info(&pdev->dev, "Failed to attach overlay (%d)\n", err);
 		goto err_destroy_adf_overlay;
 	}
 
@@ -1142,7 +1142,7 @@ static int adf_pdp_probe_device(struct platform_device *pdev)
 		* pdp->num_supported_modes, GFP_KERNEL);
 
 	if (!pdp->supported_modes) {
-		dev_err(&pdev->dev, "Failed to allocate supported modeinfo structs\n");
+		dev_info(&pdev->dev, "Failed to allocate supported modeinfo structs\n");
 		err = -ENOMEM;
 		goto err_destroy_adf_overlay;
 	}
@@ -1154,7 +1154,7 @@ static int adf_pdp_probe_device(struct platform_device *pdev)
 		pdp_display_width);
 	if (default_mode_id == -1) {
 		default_mode_id = 0;
-		dev_err(&pdev->dev, "No modeline found for requested display size (%dx%d)\n",
+		dev_info(&pdev->dev, "No modeline found for requested display size (%dx%d)\n",
 			pdp_display_width, pdp_display_height);
 	}
 
@@ -1162,14 +1162,14 @@ static int adf_pdp_probe_device(struct platform_device *pdev)
 	err = pdp_modeset(&pdp->adf_interface,
 		&pdp->supported_modes[default_mode_id]);
 	if (err) {
-		dev_err(&pdev->dev, "Initial modeset failed (%d)\n", err);
+		dev_info(&pdev->dev, "Initial modeset failed (%d)\n", err);
 		goto err_destroy_modelist;
 	}
 
 	err = adf_hotplug_notify_connected(&pdp->adf_interface,
 		pdp->supported_modes, pdp->num_supported_modes);
 	if (err) {
-		dev_err(&pdev->dev, "Initial hotplug notify failed (%d)\n",
+		dev_info(&pdev->dev, "Initial hotplug notify failed (%d)\n",
 			err);
 		goto err_destroy_modelist;
 	}
@@ -1177,7 +1177,7 @@ static int adf_pdp_probe_device(struct platform_device *pdev)
 					   TC_INTERRUPT_TC5_PDP,
 					   pdp_irq_handler, pdp);
 	if (err) {
-		dev_err(&pdev->dev, "Failed to set interrupt handler (%d)\n",
+		dev_info(&pdev->dev, "Failed to set interrupt handler (%d)\n",
 			err);
 		goto err_destroy_modelist;
 	}
@@ -1187,7 +1187,7 @@ static int adf_pdp_probe_device(struct platform_device *pdev)
 	atomic_set(&pdp->vsync_state, 0);
 
 	if (debugfs_dma_buf_init("pdp_raw"))
-		dev_err(&pdev->dev, "Failed to create debug fs file for raw access\n");
+		dev_info(&pdev->dev, "Failed to create debug fs file for raw access\n");
 
 	return err;
 err_destroy_modelist:
@@ -1203,7 +1203,7 @@ err_destroy_ion_client:
 err_disable_pci:
 	pci_disable_device(pci_dev);
 err_out:
-	dev_err(&pdev->dev, "Failed to initialise PDP device\n");
+	dev_info(&pdev->dev, "Failed to initialise PDP device\n");
 	return err;
 }
 

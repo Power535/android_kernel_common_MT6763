@@ -917,6 +917,9 @@ void bio_advance(struct bio *bio, unsigned bytes)
 		bio_integrity_advance(bio, bytes);
 
 	bio_advance_iter(bio, &bio->bi_iter, bytes);
+
+	/* also advance bc_iv in behind bio for hie */
+	bio->bi_crypt_ctx.bc_iv += (bytes >> PAGE_SHIFT);
 }
 EXPORT_SYMBOL(bio_advance);
 
@@ -1226,8 +1229,11 @@ struct bio *bio_copy_user_iov(struct request_queue *q,
 			}
 		}
 
-		if (bio_add_pc_page(q, bio, page, bytes, offset) < bytes)
+		if (bio_add_pc_page(q, bio, page, bytes, offset) < bytes) {
+			if (!map_data)
+				__free_page(page);
 			break;
+		}
 
 		len -= bytes;
 		offset = 0;

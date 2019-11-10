@@ -75,7 +75,7 @@ PVRSRV_PCI_DEV_HANDLE OSPCISetDev(void *pvPCICookie, HOST_PCI_INIT_FLAGS eFlags)
 	psPVRPCI = OSAllocMem(sizeof(*psPVRPCI));
 	if (psPVRPCI == NULL)
 	{
-		printk(KERN_ERR "OSPCISetDev: Couldn't allocate PVR PCI structure\n");
+		pr_info( "OSPCISetDev: Couldn't allocate PVR PCI structure\n");
 		return NULL;
 	}
 
@@ -85,7 +85,7 @@ PVRSRV_PCI_DEV_HANDLE OSPCISetDev(void *pvPCICookie, HOST_PCI_INIT_FLAGS eFlags)
 	err = pci_enable_device(psPVRPCI->psPCIDev);
 	if (err != 0)
 	{
-		printk(KERN_ERR "OSPCISetDev: Couldn't enable device (%d)\n", err);
+		pr_info( "OSPCISetDev: Couldn't enable device (%d)\n", err);
 		OSFreeMem(psPVRPCI);
 		return NULL;
 	}
@@ -101,11 +101,11 @@ PVRSRV_PCI_DEV_HANDLE OSPCISetDev(void *pvPCICookie, HOST_PCI_INIT_FLAGS eFlags)
 		err = pci_enable_msi(psPVRPCI->psPCIDev);
 		if (err != 0)
 		{
-			printk(KERN_ERR "OSPCISetDev: Couldn't enable MSI (%d)", err);
+			pr_info( "OSPCISetDev: Couldn't enable MSI (%d)", err);
 			psPVRPCI->ePCIFlags &= ~HOST_PCI_INIT_FLAG_MSI;	/* PRQA S 1474,3358,4130 */ /* misuse of enums */
 		}
 #else
-		printk(KERN_ERR "OSPCISetDev: MSI support not enabled in the kernel");
+		pr_info( "OSPCISetDev: MSI support not enabled in the kernel");
 #endif
 }
 
@@ -215,7 +215,7 @@ static IMG_UINT64 OSPCIAddrRangeFunc(enum HOST_PCI_ADDR_RANGE_FUNC eFunc,
 
 	if (ui32Index >= DEVICE_COUNT_RESOURCE)
 	{
-		printk(KERN_ERR "OSPCIAddrRangeFunc: Index out of range");
+		pr_info( "OSPCIAddrRangeFunc: Index out of range");
 		return 0;
 	}
 
@@ -238,7 +238,7 @@ static IMG_UINT64 OSPCIAddrRangeFunc(enum HOST_PCI_ADDR_RANGE_FUNC eFunc,
 			int err = pci_request_region(psPVRPCI->psPCIDev, (IMG_INT)ui32Index, PVRSRV_MODNAME);
 			if (err != 0)
 			{
-				printk(KERN_ERR "OSPCIAddrRangeFunc: pci_request_region_failed (%d)", err);
+				pr_info( "OSPCIAddrRangeFunc: pci_request_region_failed (%d)", err);
 				return 0;
 			}
 			psPVRPCI->abPCIResourceInUse[ui32Index] = IMG_TRUE;
@@ -255,7 +255,7 @@ static IMG_UINT64 OSPCIAddrRangeFunc(enum HOST_PCI_ADDR_RANGE_FUNC eFunc,
 		}
 		default:
 		{
-			printk(KERN_ERR "OSPCIAddrRangeFunc: Unknown function");
+			pr_info( "OSPCIAddrRangeFunc: Unknown function");
 			break;
 		}
 	}
@@ -493,7 +493,7 @@ PVRSRV_ERROR OSPCISuspendDev(PVRSRV_PCI_DEV_HANDLE hPVRPCI)
 	err = pci_save_state(psPVRPCI->psPCIDev);
 	if (err != 0)
 	{
-		printk(KERN_ERR "OSPCISuspendDev: pci_save_state_failed (%d)", err);
+		pr_info( "OSPCISuspendDev: pci_save_state_failed (%d)", err);
 		return PVRSRV_ERROR_PCI_CALL_FAILED;
 	}
 
@@ -505,13 +505,13 @@ PVRSRV_ERROR OSPCISuspendDev(PVRSRV_PCI_DEV_HANDLE hPVRPCI)
 		case 0:
 			break;
 		case -EIO:
-			printk(KERN_ERR "OSPCISuspendDev: device doesn't support PCI PM");
+			pr_info( "OSPCISuspendDev: device doesn't support PCI PM");
 			break;
 		case -EINVAL:
-			printk(KERN_ERR "OSPCISuspendDev: can't enter requested power state");
+			pr_info( "OSPCISuspendDev: can't enter requested power state");
 			break;
 		default:
-			printk(KERN_ERR "OSPCISuspendDev: pci_set_power_state failed (%d)", err);
+			pr_info( "OSPCISuspendDev: pci_set_power_state failed (%d)", err);
 			break;
 	}
 
@@ -536,13 +536,13 @@ PVRSRV_ERROR OSPCIResumeDev(PVRSRV_PCI_DEV_HANDLE hPVRPCI)
 		case 0:
 			break;
 		case -EIO:
-			printk(KERN_ERR "OSPCIResumeDev: device doesn't support PCI PM");
+			pr_info( "OSPCIResumeDev: device doesn't support PCI PM");
 			break;
 		case -EINVAL:
-			printk(KERN_ERR "OSPCIResumeDev: can't enter requested power state");
+			pr_info( "OSPCIResumeDev: can't enter requested power state");
 			return PVRSRV_ERROR_UNKNOWN_POWER_STATE;
 		default:
-			printk(KERN_ERR "OSPCIResumeDev: pci_set_power_state failed (%d)", err);
+			pr_info( "OSPCIResumeDev: pci_set_power_state failed (%d)", err);
 			return PVRSRV_ERROR_UNKNOWN_POWER_STATE;
 	}
 
@@ -551,7 +551,7 @@ PVRSRV_ERROR OSPCIResumeDev(PVRSRV_PCI_DEV_HANDLE hPVRPCI)
 	err = pci_enable_device(psPVRPCI->psPCIDev);
 	if (err != 0)
 	{
-		printk(KERN_ERR "OSPCIResumeDev: Couldn't enable device (%d)", err);
+		pr_info( "OSPCIResumeDev: Couldn't enable device (%d)", err);
 		return PVRSRV_ERROR_PCI_CALL_FAILED;
 	}
 
@@ -566,7 +566,7 @@ PVRSRV_ERROR OSPCIResumeDev(PVRSRV_PCI_DEV_HANDLE hPVRPCI)
 			err = pci_request_region(psPVRPCI->psPCIDev, i, PVRSRV_MODNAME);
 			if (err != 0)
 			{
-				printk(KERN_ERR "OSPCIResumeDev: pci_request_region_failed (region %d, error %d)", i, err);
+				pr_info( "OSPCIResumeDev: pci_request_region_failed (region %d, error %d)", i, err);
 			}
 		}
 	}
@@ -615,14 +615,14 @@ PVRSRV_ERROR OSPCIClearResourceMTRRs(PVRSRV_PCI_DEV_HANDLE hPVRPCI, IMG_UINT32 u
 	res = mtrr_add(start, end - start, MTRR_TYPE_UNCACHABLE, 0);
 	if (res < 0)
 	{
-		printk(KERN_ERR "OSPCIClearResourceMTRRs: mtrr_add failed (%d)", res);
+		pr_info( "OSPCIClearResourceMTRRs: mtrr_add failed (%d)", res);
 		return PVRSRV_ERROR_PCI_CALL_FAILED;
 	}
 
 	res = mtrr_del(res, start, end - start);
 	if (res < 0)
 	{
-		printk(KERN_ERR "OSPCIClearResourceMTRRs: mtrr_del failed (%d)", res);
+		pr_info( "OSPCIClearResourceMTRRs: mtrr_del failed (%d)", res);
 		return PVRSRV_ERROR_PCI_CALL_FAILED;
 	}
 
@@ -653,7 +653,7 @@ PVRSRV_ERROR OSPCIClearResourceMTRRs(PVRSRV_PCI_DEV_HANDLE hPVRPCI, IMG_UINT32 u
 		res = mtrr_del(res, start, end - start);
 		if (res < 0)
 		{
-			printk(KERN_ERR "OSPCIClearResourceMTRRs: mtrr_del failed (%d)", res);
+			pr_info( "OSPCIClearResourceMTRRs: mtrr_del failed (%d)", res);
 			return PVRSRV_ERROR_PCI_CALL_FAILED;
 		}
 
@@ -663,7 +663,7 @@ PVRSRV_ERROR OSPCIClearResourceMTRRs(PVRSRV_PCI_DEV_HANDLE hPVRPCI, IMG_UINT32 u
 			res = mtrr_add(0, start, MTRR_TYPE_WRBACK, 0);
 			if (res < 0)
 			{
-				printk(KERN_ERR "OSPCIClearResourceMTRRs: mtrr_add failed (%d)", res);
+				pr_info( "OSPCIClearResourceMTRRs: mtrr_add failed (%d)", res);
 				return PVRSRV_ERROR_PCI_CALL_FAILED;
 			}
 
@@ -671,7 +671,7 @@ PVRSRV_ERROR OSPCIClearResourceMTRRs(PVRSRV_PCI_DEV_HANDLE hPVRPCI, IMG_UINT32 u
 			res = mtrr_add(start, end - start, MTRR_TYPE_WRCOMB, 0);
 			if (res < 0)
 			{
-				printk(KERN_ERR "OSPCIClearResourceMTRRs: mtrr_add failed (%d)", res);
+				pr_info( "OSPCIClearResourceMTRRs: mtrr_add failed (%d)", res);
 				return PVRSRV_ERROR_PCI_CALL_FAILED;
 			}
 		}

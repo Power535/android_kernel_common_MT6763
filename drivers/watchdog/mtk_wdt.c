@@ -42,6 +42,7 @@
 #ifdef CONFIG_MT6397_MISC
 #include <linux/mfd/mt6397/rtc_misc.h>
 #endif
+#include <linux/suspend.h>
 
 #define WDT_MAX_TIMEOUT		31
 #define WDT_MIN_TIMEOUT		1
@@ -98,7 +99,7 @@ struct mtk_wdt_dev {
 	struct watchdog_device wdt_dev;
 	void __iomem *wdt_base;
 	int wdt_irq_id;
-	struct notifier_block restart_handler;
+	struct notifier_block restart_handler, pm_handler;
 	struct toprgu_reset reset_controller;
 };
 
@@ -231,6 +232,22 @@ static int mtk_wdt_ping(struct watchdog_device *wdt_dev)
 	printk_deferred("[WDK]: kick Ex WDT\n");
 
 	return 0;
+}
+
+static int mtk_pm_handler(struct notifier_block *this, unsigned long pm_event,
+				void *unused)
+{
+	struct mtk_wdt_dev *mtk_wdt;
+
+	mtk_wdt = container_of(this, struct mtk_wdt_dev, pm_handler);
+	switch (pm_event) {
+	case PM_SUSPEND_PREPARE:
+		mtk_wdt_ping(&mtk_wdt->wdt_dev);
+		break;
+	default:
+		break;
+	}
+	return NOTIFY_DONE;
 }
 
 static int mtk_wdt_set_timeout(struct watchdog_device *wdt_dev,
@@ -393,6 +410,13 @@ static int mtk_wdt_probe(struct platform_device *pdev)
 	if (err)
 		dev_warn(&pdev->dev,
 			"cannot register restart handler (err=%d)\n", err);
+
+	mtk_wdt->pm_handler.notifier_call = mtk_pm_handler;
+	mtk_wdt->pm_handler.priority = 128;
+	err = register_pm_notifier(&mtk_wdt->pm_handler);
+	if (err)
+		dev_warn(&pdev->dev, "[%s] failed to register WDT PM notifier %d\n",
+			__func__, err);
 
 	dev_info(&pdev->dev, "Watchdog enabled (timeout=%d sec, nowayout=%d)\n",
 			mtk_wdt->wdt_dev.timeout, nowayout);

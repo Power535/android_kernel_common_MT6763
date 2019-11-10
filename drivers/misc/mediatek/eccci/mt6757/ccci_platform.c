@@ -405,7 +405,6 @@ void ccci_reset_ccif_hw(unsigned char md_id, int ccif_id, void __iomem *baseA, v
 #else
 	{
 		int reset_bit = -1;
-		unsigned int reg_value;
 
 		switch (ccif_id) {
 		case AP_MD1_CCIF:
@@ -423,16 +422,8 @@ void ccci_reset_ccif_hw(unsigned char md_id, int ccif_id, void __iomem *baseA, v
 			return;
 
 		/* this reset bit will clear CCIF's busy/wch/irq, but not SRAM */
-
-		reg_value = ccci_read32(infra_ao_base, 0x150);
-		reg_value &= ~(1 << reset_bit);
-		reg_value |= (1 << reset_bit);
-		ccci_write32(infra_ao_base, 0x150, reg_value);
-
-		reg_value = ccci_read32(infra_ao_base, 0x154);
-		reg_value &= ~(1 << reset_bit);
-		reg_value |= (1 << reset_bit);
-		ccci_write32(infra_ao_base, 0x154, reg_value);
+		ccci_write32(infra_ao_base, 0x150, 1 << reset_bit);
+		ccci_write32(infra_ao_base, 0x154, 1 << reset_bit);
 	}
 #endif
 	/* clear SRAM */

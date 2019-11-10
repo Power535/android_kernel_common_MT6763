@@ -47,11 +47,11 @@ struct SensorState {
 	bool enable;
 	bool timestamp_filter;
 	atomic_t flushCnt;
+	atomic64_t enableTime;
 };
 
 #define SCP_SENSOR_HUB_TEMP_BUFSIZE     256
 
-#define SCP_SENSOR_HUB_FIFO_SIZE        0x800000
 #define SCP_KFIFO_BUFFER_SIZE			(2048)
 #define SCP_DIRECT_PUSH_FIFO_SIZE       8192
 
@@ -193,6 +193,16 @@ typedef struct {
 	uint32_t state;  /* geofence [source, result, operation_mode] */
 } geofence_event_t;
 
+struct sar_event_t {
+	struct {
+		int32_t data[3];
+		int32_t x_bias;
+		int32_t y_bias;
+		int32_t z_bias;
+	};
+	uint32_t status;
+};
+
 typedef enum {
 	STILL,
 	STANDING,
@@ -249,6 +259,7 @@ struct data_unit_t {
 		tilt_event_t tilt_event;
 		in_pocket_event_t inpocket_event;
 		geofence_event_t geofence_data_t;
+		struct sar_event_t sar_event;
 		int32_t data[8];
 	};
 } __packed;
@@ -417,21 +428,23 @@ typedef struct {
 
 struct mag_dev_info_t {
 	char libname[16];
-	int32_t layout;
-	int32_t deviceid;
+	int8_t layout;
+	int8_t deviceid;
 };
 
 struct sensorInfo_t {
-	union {
-		char name[16];
-		struct mag_dev_info_t mag_dev_info;
-	};
+	char name[16];
+	struct mag_dev_info_t mag_dev_info;
 };
 
 struct scp_sensor_hub_get_sensor_info {
 	CUST_ACTION action;
-	struct sensorInfo_t sensorInfo;
+	union {
+		int32_t int32_data[0];
+		struct sensorInfo_t sensorInfo;
+	};
 };
+
 enum {
 	USE_OUT_FACTORY_MODE = 0,
 	USE_IN_FACTORY_MODE

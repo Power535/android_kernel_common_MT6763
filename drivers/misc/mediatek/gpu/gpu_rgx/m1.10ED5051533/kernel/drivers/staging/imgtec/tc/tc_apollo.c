@@ -125,7 +125,7 @@ static int spi_read(struct tc_device *tc, u32 off, u32 *val)
 					  + TCF_CLK_CTRL_TCF_SPI_MST_STATUS);
 
 		if (cnt++ > 10000) {
-			dev_err(&tc->pdev->dev,
+			dev_info(&tc->pdev->dev,
 				"spi_read: Time out reading SPI reg (0x%x)\n",
 				off);
 			return -1;
@@ -160,7 +160,7 @@ static int apollo_thermal_get_temp(struct thermal_zone_device *thermal,
 		goto err_out;
 
 	if (spi_read(tc, TCF_TEMP_SENSOR_SPI_OFFSET, &tmp)) {
-		dev_err(&tc->pdev->dev,
+		dev_info(&tc->pdev->dev,
 				"Failed to read apollo temperature sensor\n");
 
 		goto err_out;
@@ -218,7 +218,7 @@ static int apollo_align_interface_es2(struct tc_device *tc)
 	msleep(1000);
 
 	if (spi_read(tc, 0x2, &reg)) {
-		dev_err(&tc->pdev->dev,
+		dev_info(&tc->pdev->dev,
 				"Unable to read PLL status\n");
 		goto err_out;
 	}
@@ -231,7 +231,7 @@ static int apollo_align_interface_es2(struct tc_device *tc)
 		iowrite32(reg, tc->tcf.registers +
 			TCF_CLK_CTRL_DUT_CONTROL_1);
 	} else {
-		dev_err(&tc->pdev->dev,
+		dev_info(&tc->pdev->dev,
 			"PLL has failed to lock, status = %x\n", reg);
 		goto err_out;
 	}
@@ -277,7 +277,7 @@ static int apollo_align_interface_es2(struct tc_device *tc)
 			bank_aligned = tc_is_interface_aligned(
 					eyes, clk_taps, train_ack);
 			if (!bank_aligned) {
-				dev_warn(&tc->pdev->dev,
+				dev_info(&tc->pdev->dev,
 					"Alignment check failed, retrying\n");
 				aligned = false;
 				break;
@@ -294,7 +294,7 @@ static int apollo_align_interface_es2(struct tc_device *tc)
 					eyes, clk_taps, train_ack);
 
 			if (!bank_aligned) {
-				dev_warn(&tc->pdev->dev,
+				dev_info(&tc->pdev->dev,
 					"Alignment check failed, retrying\n");
 				aligned = false;
 				break;
@@ -303,7 +303,7 @@ static int apollo_align_interface_es2(struct tc_device *tc)
 	}
 
 	if (!aligned) {
-		dev_err(&tc->pdev->dev, "Unable to initialise the testchip (interface alignment failure), please restart the system.\n");
+		dev_info(&tc->pdev->dev, "Unable to initialise the testchip (interface alignment failure), please restart the system.\n");
 		/* We are not returning an error here, cause VP doesn't
 		 * implement the necessary registers although they claim to be
 		 * TC compatible. */
@@ -396,13 +396,13 @@ static void apollo_set_mem_latency(struct tc_device *tc,
 	spi_write(tc, 0x1009, mem_latency);
 
 	if (spi_read(tc, 0x1009, &regval) != 0) {
-		dev_err(&tc->pdev->dev,
+		dev_info(&tc->pdev->dev,
 			"Failed to read back memory latency register");
 		return;
 	}
 
 	if (mem_latency != regval) {
-		dev_err(&tc->pdev->dev,
+		dev_info(&tc->pdev->dev,
 			"Memory latency register doesn't match requested value"
 			" (actual: %#08x, expected: %#08x)\n",
 			regval, mem_latency);
@@ -570,7 +570,7 @@ static int apollo_hard_reset(struct tc_device *tc,
 						     &apollo_thermal_dev_ops,
 						     NULL, 0, 0);
 		if (IS_ERR(apollo_pdata.thermal_zone)) {
-			dev_warn(&tc->pdev->dev, "Couldn't register thermal zone");
+			dev_info(&tc->pdev->dev, "Couldn't register thermal zone");
 			apollo_pdata.thermal_zone = NULL;
 		}
 	}
@@ -588,10 +588,10 @@ static int apollo_hard_reset(struct tc_device *tc,
 		build_owner = (reg >> 20) & 0xf;
 
 		if (build_inc) {
-			dev_alert(&tc->pdev->dev,
+			dev_info(&tc->pdev->dev,
 				"BE WARNED: You are not running a tagged release of the FPGA!\n");
 
-			dev_alert(&tc->pdev->dev, "Owner: 0x%01x, Inc: 0x%02x\n",
+			dev_info(&tc->pdev->dev, "Owner: 0x%01x, Inc: 0x%02x\n",
 				  build_owner, build_inc);
 		}
 
@@ -622,7 +622,7 @@ static int apollo_hw_init(struct tc_device *tc,
 		u32 reg;
 		/* Enable ASTC via SPI */
 		if (spi_read(tc, 0xf, &reg)) {
-			dev_err(&tc->pdev->dev,
+			dev_info(&tc->pdev->dev,
 				"Failed to read apollo ASTC register\n");
 			err = -ENODEV;
 			goto err_out;
@@ -692,18 +692,18 @@ apollo_detect_tc_version(struct tc_device *tc)
 
 	switch (val) {
 	default:
-		dev_err(&tc->pdev->dev,
+		dev_info(&tc->pdev->dev,
 			"Unknown TCF core target build ID (0x%x) - assuming Hood ES2 - PLEASE REPORT TO ANDROID TEAM\n",
 			val);
 		/* Fall-through */
 	case 5:
-		dev_err(&tc->pdev->dev, "Looks like a Hood ES2 TC\n");
+		dev_info(&tc->pdev->dev, "Looks like a Hood ES2 TC\n");
 		return APOLLO_VERSION_TCF_2;
 	case 1:
-		dev_err(&tc->pdev->dev, "Looks like a TCF5\n");
+		dev_info(&tc->pdev->dev, "Looks like a TCF5\n");
 		return APOLLO_VERSION_TCF_5;
 	case 6:
-		dev_err(&tc->pdev->dev, "Looks like a Bonnie TC\n");
+		dev_info(&tc->pdev->dev, "Looks like a Bonnie TC\n");
 		return APOLLO_VERSION_TCF_BONNIE;
 	}
 }
@@ -761,7 +761,7 @@ static int apollo_dev_init(struct tc_device *tc, struct pci_dev *pdev,
 		pci_resource_len(pdev, APOLLO_MEM_PCI_BASENUM);
 
 	if (tc->tc_mem.size < pdp_mem_size) {
-		dev_err(&pdev->dev,
+		dev_info(&pdev->dev,
 			"Apollo MEM region (bar %d) has size of %lu which is smaller than the requested PDP heap of %lu",
 			APOLLO_MEM_PCI_BASENUM,
 			(unsigned long)tc->tc_mem.size,
@@ -773,7 +773,7 @@ static int apollo_dev_init(struct tc_device *tc, struct pci_dev *pdev,
 #if defined(SUPPORT_FAKE_SECURE_ION_HEAP)
 	if (tc->tc_mem.size <
 	    (pdp_mem_size + secure_mem_size)) {
-		dev_err(&pdev->dev,
+		dev_info(&pdev->dev,
 			"Apollo MEM region (bar %d) has size of %lu which is smaller than the requested PDP heap of %lu plus the requested secure heap size %lu",
 			APOLLO_MEM_PCI_BASENUM,
 			(unsigned long)tc->tc_mem.size,
@@ -802,7 +802,7 @@ static int apollo_dev_init(struct tc_device *tc, struct pci_dev *pdev,
 #endif
 
 	if (tc->ext_heap_mem_size < TC_EXT_MINIMUM_MEM_SIZE) {
-		dev_warn(&pdev->dev,
+		dev_info(&pdev->dev,
 			"Apollo MEM region (bar %d) has size of %lu, with %lu pdp_mem_size only %lu bytes are left for ext device, which looks too small",
 			APOLLO_MEM_PCI_BASENUM,
 			(unsigned long)tc->tc_mem.size,
@@ -825,7 +825,7 @@ static int apollo_dev_init(struct tc_device *tc, struct pci_dev *pdev,
 #if defined(SUPPORT_ION)
 	err = tc_ion_init(tc, APOLLO_MEM_PCI_BASENUM);
 	if (err) {
-		dev_err(&pdev->dev, "Failed to initialise ION\n");
+		dev_info(&pdev->dev, "Failed to initialise ION\n");
 		goto err_unmap_fpga_registers;
 	}
 #endif
@@ -893,20 +893,20 @@ int apollo_init(struct tc_device *tc, struct pci_dev *pdev,
 
 	err = apollo_dev_init(tc, pdev, pdp_mem_size, secure_mem_size);
 	if (err) {
-		dev_err(&pdev->dev, "apollo_dev_init failed\n");
+		dev_info(&pdev->dev, "apollo_dev_init failed\n");
 		goto err_out;
 	}
 
 	err = apollo_hw_init(tc, core_clock, mem_clock, sys_clock,
 			     mem_latency, mem_wresp_latency);
 	if (err) {
-		dev_err(&pdev->dev, "apollo_hw_init failed\n");
+		dev_info(&pdev->dev, "apollo_hw_init failed\n");
 		goto err_dev_cleanup;
 	}
 
 	err = apollo_enable_irq(tc);
 	if (err) {
-		dev_err(&pdev->dev,
+		dev_info(&pdev->dev,
 			"Failed to initialise IRQ\n");
 		goto err_dev_cleanup;
 	}
@@ -1003,14 +1003,14 @@ int apollo_register_pdp_device(struct tc_device *tc)
 		pdp_device_info.res = pdp_resources_es2;
 		pdp_device_info.num_res = ARRAY_SIZE(pdp_resources_es2);
 	} else {
-		dev_err(&tc->pdev->dev,
+		dev_info(&tc->pdev->dev,
 			"Unable to set PDP resource info for unknown apollo device\n");
 	}
 
 	tc->pdp_dev = platform_device_register_full(&pdp_device_info);
 	if (IS_ERR(tc->pdp_dev)) {
 		err = PTR_ERR(tc->pdp_dev);
-		dev_err(&tc->pdev->dev,
+		dev_info(&tc->pdev->dev,
 			"Failed to register PDP device (%d)\n", err);
 		tc->pdp_dev = NULL;
 		goto err;
@@ -1068,7 +1068,7 @@ int apollo_register_ext_device(struct tc_device *tc)
 
 	if (IS_ERR(tc->ext_dev)) {
 		err = PTR_ERR(tc->ext_dev);
-		dev_err(&tc->pdev->dev,
+		dev_info(&tc->pdev->dev,
 			"Failed to register rogue device (%d)\n", err);
 		tc->ext_dev = NULL;
 	}
@@ -1113,7 +1113,7 @@ int apollo_register_ext_device(struct tc_device *tc)
 	tc->ext_dev = platform_device_register_full(&fpga_device_info);
 	if (IS_ERR(tc->ext_dev)) {
 		err = PTR_ERR(tc->ext_dev);
-		dev_err(&tc->pdev->dev,
+		dev_info(&tc->pdev->dev,
 			"Failed to register fpga device (%d)\n", err);
 		tc->ext_dev = NULL;
 		/* Fall through */
@@ -1248,7 +1248,7 @@ int apollo_sys_info(struct tc_device *tc, u32 *tmp, u32 *pll)
 	}
 
 	if (spi_read(tc, 0x2, pll)) {
-		dev_err(&tc->pdev->dev, "Failed to read PLL status\n");
+		dev_info(&tc->pdev->dev, "Failed to read PLL status\n");
 		err = -ENODEV;
 		goto err_out;
 	}
@@ -1280,7 +1280,7 @@ int apollo_sys_strings(struct tc_device *tc,
 
 	host_fpga_registers = ioremap_nocache(host_fpga_base, 0x04);
 	if (!host_fpga_registers) {
-		dev_err(&tc->pdev->dev,
+		dev_info(&tc->pdev->dev,
 			"Failed to map host fpga registers\n");
 		err = -EIO;
 		goto err_out;
@@ -1335,7 +1335,7 @@ int apollo_sys_strings(struct tc_device *tc,
 			 HEX2DEC((val & MAJOR_MASK) >> MAJOR_SHIFT),
 			 HEX2DEC((val & MINOR_MASK) >> MINOR_SHIFT));
 	} else {
-		dev_warn(&tc->pdev->dev,
+		dev_info(&tc->pdev->dev,
 			 "%s: unrecognised SW_IF_VERSION %#08x\n",
 			 __func__, val);
 

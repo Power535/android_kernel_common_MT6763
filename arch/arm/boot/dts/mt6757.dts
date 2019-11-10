@@ -1,12 +1,17 @@
 /*
- * Mediatek's MT6757 SoC device tree source
+ * Mediatek's mt6757 SoC device tree source
  *
- * Copyright (c) 2013 MediaTek Co., Ltd.
- *              http://www.mediatek.com
+ * Copyright (C) 2016 MediaTek Inc.
  *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See http://www.gnu.org/licenses/gpl-2.0.html for more details.
  */
-
-
 
 #include <dt-bindings/interrupt-controller/arm-gic.h>
 #include <dt-bindings/interrupt-controller/irq.h>
@@ -28,7 +33,7 @@
 	/* chosen */
 	chosen: chosen {
 		bootargs = "console=tty0 console=ttyMT3,921600n1 \
-vmalloc=496M slub_max_order=0 slub_debug=OFZPU \
+vmalloc=400M slub_max_order=0 slub_debug=OFZPU \
 androidboot.hardware=mt6757 \
 firmware_class.path=/vendor/firmware loop.max_part=7";
 	};
@@ -311,32 +316,17 @@ firmware_class.path=/vendor/firmware loop.max_part=7";
 		/* atf-ramdump-memory for ATF debug purpose, for ramdump */
 		/* We use MPU region 1 to protected these 2 sections */
 		/* reserve 64KB at DRAM start + 70MB, for ATF use */
-		atf-reserved-memory@50e00000 {
+		atf-reserved-memory@44600000 {
 			compatible = "mediatek,mt6757-atf-reserved-memory";
 			no-map;
-			reg = <0 0x50e00000 0 0x14000>;
+			reg = <0 0x44600000 0 0x10000>;
 		};
 
 		/* reserve 192KB after atf-reserved-memory, for ATF ramdump */
-		atf-ramdump-memory@50e14000 {
+		atf-ramdump-memory@44610000 {
 			compatible = "mediatek,mt6757-atf-ramdump-memory";
 			no-map;
-			reg = <0 0x50e14000 0 0x2c000>;
-		};
-
-		ram_console-reserved-memory@47c80000 {
-			compatible = "ram_console-reserve-memory";
-			reg = <0 0x47c80000 0 0x10000>;
-		};
-
-		pstore-reserved-memory@47c90000 {
-			compatible = "mediatek,pstore";
-			reg = <0 0x47c90000 0 0xe0000>;
-		};
-
-		minirdump-reserved-memory@47d70000{
-			compatible = "mediatek,minirdump";
-			reg = <0 0x47d70000 0 0x10000>;
+			reg = <0 0x44610000 0 0x30000>;
 		};
 
 		consys-reserve-memory {
@@ -1399,16 +1389,6 @@ firmware_class.path=/vendor/firmware loop.max_part=7";
 		#clock-cells = <1>;
 	};
 
-	btcvsd@10001000 {
-		compatible = "mediatek,audio_bt_cvsd";
-		offset =<0xf00 0x800 0xfd0 0xfd4 0xfd8>;
-		/*INFRA MISC, conn_bt_cvsd_mask, cvsd_mcu_read, write, packet_indicator*/
-		reg=<0 0x10001000 0 0x1000>, /*AUDIO_INFRA_BASE_PHYSICAL*/
-			  <0 0x18000000 0 0x10000>, /*PKV_PHYSICAL_BASE*/
-			  <0 0x18080000 0 0x8000>; /*SRAM_BANK2*/
-		interrupts = <GIC_SPI 265 IRQ_TYPE_LEVEL_LOW>;
-	};
-
 	scpsys: scpsys@10001000 {
 		compatible = "mediatek,mt6757-scpsys";
 		reg = <0 0x10001000 0 0x1000>,
@@ -2457,6 +2437,7 @@ firmware_class.path=/vendor/firmware loop.max_part=7";
 		compatible = "mediatek,audio";
 		reg = <0 0x11220000 0 0x1000>;
 		interrupts = <GIC_SPI 142 IRQ_TYPE_LEVEL_LOW>;
+		mediatek,btcvsd_snd = <&btcvsd_snd>;
 		#clock-cells = <1>;
 	};
 
@@ -2513,6 +2494,17 @@ firmware_class.path=/vendor/firmware loop.max_part=7";
 	audio_sram@11221000 {
 		compatible = "mediatek,audio_sram";
 		reg = <0 0x11221000 0 0xb400>;
+	};
+
+	btcvsd_snd: mtk-btcvsd-snd@18000000 {
+		compatible = "mediatek,mtk-btcvsd-snd";
+		reg=<0 0x18000000 0 0x10000>, /*PKV_PHYSICAL_BASE*/
+		    <0 0x18080000 0 0x8000>; /*SRAM_BANK2*/
+		interrupts = <GIC_SPI 265 IRQ_TYPE_LEVEL_LOW>;
+		mediatek,infracfg = <&infrasys>;
+		mediatek,offset =<0xf00 0x800 0xfd0 0xfd4 0xfd8>;
+		/*INFRA MISC, conn_bt_cvsd_mask*/
+		/*cvsd_mcu_read, write, packet_indicator*/
 	};
 
 	usb0:usb3@11270000 {
@@ -3031,7 +3023,7 @@ firmware_class.path=/vendor/firmware loop.max_part=7";
 		compatible = "mediatek,smi_common";
 		reg = <0 0x14028000 0 0x1000>,
 					<0 0x14026000 0 0x1000>,
-					<0 0x16010000 0 0x1000>,
+					<0 0x16010000 0 0x10000>,
 					<0 0x1a001000 0 0x1000>,
 					<0 0x17001000 0 0x1000>,
 					<0 0x14027000 0 0x1000>,
@@ -3041,7 +3033,6 @@ firmware_class.path=/vendor/firmware loop.max_part=7";
 				<&vdecsys VDEC_LARB1>,
 				<&camsys CAMSYS_LARB2_CGPDN>,
 				<&vencsys VENC_GCON_SET0_LARB>,
-				<&vencsys VENC_GCON_SET1_VENC>,
 				<&mmsys MMSYS_SMI_LARB4>,
 				<&imgsys IMG_LARB5>,
 				<&scpsys SCP_SYS_VEN>,
@@ -3049,7 +3040,7 @@ firmware_class.path=/vendor/firmware loop.max_part=7";
 				<&scpsys SCP_SYS_ISP>,
 				<&scpsys SCP_SYS_DIS>,
 				<&scpsys SCP_SYS_CAM>;
-			clock-names = "smi-common", "smi-larb0", "smi-larb1", "smi-larb2", "smi-larb3", "smi-larb3-2",
+			clock-names = "smi-common", "smi-larb0", "smi-larb1", "smi-larb2", "smi-larb3",
 			"smi-larb4", "smi-larb5", "mtcmos-ven", "mtcmos-vde", "mtcmos-isp",
 			"mtcmos-dis", "mtcmos-cam";
 	};
@@ -3503,14 +3494,6 @@ firmware_class.path=/vendor/firmware loop.max_part=7";
 		compatible = "mediatek,usb3_phy";
 		clocks = <&infrasys INFRACFG_AO_SSUSB_TOP_CG>;
 		clock-names = "sssub_clk";
-	};
-
-	mt_soc_btcvsd_rx_pcm {
-		compatible = "mediatek,mt_soc_btcvsd_rx_pcm";
-	};
-
-	mt_soc_btcvsd_tx_pcm {
-		compatible = "mediatek,mt_soc_btcvsd_tx_pcm";
 	};
 
 	mt_soc_deep_buffer_dl_pcm {

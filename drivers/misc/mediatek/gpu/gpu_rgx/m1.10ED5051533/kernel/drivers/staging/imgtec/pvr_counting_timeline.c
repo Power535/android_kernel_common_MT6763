@@ -57,7 +57,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 			pfnDumpDebugPrintf(pvDumpDebugFile, fmt,         \
 					   ## __VA_ARGS__);              \
 		else                                                     \
-			pr_err(fmt "\n", ## __VA_ARGS__);                \
+			pr_info(fmt "\n", ## __VA_ARGS__);                \
 	} while (0)
 
 struct pvr_counting_fence_timeline {
@@ -131,7 +131,7 @@ struct pvr_counting_fence_timeline *pvr_counting_fence_timeline_create(
 				DEBUG_REQUEST_LINUXFENCE,
 				timeline);
 	if (srv_err != PVRSRV_OK) {
-		pr_err("%s: failed to register debug request callback (%s)\n",
+		pr_info("%s: failed to register debug request callback (%s)\n",
 		       __func__, PVRSRVGetErrorStringKM(srv_err));
 		goto err_free_timeline_ctx;
 	}

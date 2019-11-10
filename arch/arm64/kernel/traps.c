@@ -273,6 +273,8 @@ static DEFINE_RAW_SPINLOCK(die_lock);
 void die(const char *str, struct pt_regs *regs, int err)
 {
 	int ret;
+	unsigned long flags;
+
 	int cpu = -1;
 	static int die_owner = -1;
 	struct thread_info *thread = current_thread_info();
@@ -283,10 +285,8 @@ void die(const char *str, struct pt_regs *regs, int err)
 	if (die_owner == -1)
 		aee_save_excp_regs(regs);
 
-	oops_enter();
-
 	cpu = get_cpu();
-	if (!raw_spin_trylock_irq(&die_lock)) {
+	if (!raw_spin_trylock_irqsave(&die_lock, flags)) {
 		if (cpu != die_owner) {
 			pr_notice("die_lock: cpu: %d trylock failed(owner:%d)\n", cpu, die_owner);
 			dump_stack();
@@ -299,6 +299,9 @@ void die(const char *str, struct pt_regs *regs, int err)
 		}
 	}
 	die_owner = cpu;
+
+	oops_enter();
+
 	console_verbose();
 	bust_spinlocks(1);
 	ret = __die(str, err, regs);
@@ -308,13 +311,15 @@ void die(const char *str, struct pt_regs *regs, int err)
 
 	bust_spinlocks(0);
 	add_taint(TAINT_DIE, LOCKDEP_NOW_UNRELIABLE);
-	raw_spin_unlock_irq(&die_lock);
 	oops_exit();
 
 	if (in_interrupt())
 		panic("Fatal exception in interrupt");
 	if (panic_on_oops)
 		panic("Fatal exception");
+
+	raw_spin_unlock_irqrestore(&die_lock, flags);
+
 	if (ret != NOTIFY_STOP)
 		do_exit(SIGSEGV);
 }
@@ -469,7 +474,7 @@ asmlinkage long do_ni_syscall(struct pt_regs *regs)
 
 	if (show_unhandled_signals_ratelimited()) {
 		pr_info("%s[%d]: syscall %d\n", current->comm,
-			task_pid_nr(current), (int)regs->syscallno);
+			task_pid_nr(current), regs->syscallno);
 		dump_instr("", regs);
 		if (user_mode(regs))
 			__show_regs(regs);

@@ -1751,6 +1751,27 @@ SyncCheckpointGetCreator(PSYNC_CHECKPOINT psSyncCheckpoint)
 	return psSyncCheckpointInt->uiProcess;
 }
 
+IMG_UINT32 SyncCheckpointStateFromUFO(PPVRSRV_DEVICE_NODE psDevNode,
+                                IMG_UINT32 ui32FwAddr)
+{
+	_SYNC_CHECKPOINT *psSyncCheckpointInt;
+	PDLLIST_NODE psNode, psNext;
+	IMG_UINT32 ui32State = 0;
+
+	OSLockAcquire(psDevNode->hSyncCheckpointListLock);
+	dllist_foreach_node(&psDevNode->sSyncCheckpointSyncsList, psNode, psNext)
+	{
+		psSyncCheckpointInt = IMG_CONTAINER_OF(psNode, _SYNC_CHECKPOINT, sListNode);
+		if (ui32FwAddr == SyncCheckpointGetFirmwareAddr((PSYNC_CHECKPOINT)psSyncCheckpointInt))
+		{
+			ui32State = psSyncCheckpointInt->psSyncCheckpointFwObj->ui32State;
+			break;
+		}
+	}
+	OSLockRelease(psDevNode->hSyncCheckpointListLock);
+	return ui32State;
+}
+
 void SyncCheckpointErrorFromUFO(PPVRSRV_DEVICE_NODE psDevNode,
                                 IMG_UINT32 ui32FwAddr)
 {
@@ -2527,19 +2548,17 @@ static IMG_UINT32 _CleanCheckpointPool(_SYNC_CHECKPOINT_CONTEXT *psContext)
 			PVR_DPF((PVR_DBG_WARNING, "%s psSyncCheckpoint->psSyncCheckpointBlock->psContext=<%p>", __FUNCTION__, (void*)psSyncCheckpointInt->psSyncCheckpointBlock->psContext));
 			PVR_DPF((PVR_DBG_WARNING, "%s psSyncCheckpoint->psSyncCheckpointBlock->psContext->psSubAllocRA=<%p>", __FUNCTION__, (void*)psSyncCheckpointInt->psSyncCheckpointBlock->psContext->psSubAllocRA));
 #endif
-			OSAtomicDecrement(&psContext->hCheckpointCount);
-			psSyncCheckpointInt->ui32ValidationCheck = SYNC_CHECKPOINT_PATTERN_FREED;
 #if (ENABLE_SYNC_CHECKPOINT_POOL_DEBUG == 1)
 			PVR_DPF((PVR_DBG_WARNING,
-					"%s CALLING RA_Free(psSyncCheckpoint(ID:%d)<%p>), psSubAllocRA=<%p>, ui32SpanAddr=0x%llx",
+					"%s CALLING RA_Free(psSyncCheckpoint(ID:%d)<%p>), "
+					"psSubAllocRA=<%p>, ui32SpanAddr=0x%llx",
 					__FUNCTION__,
 					psSyncCheckpointInt->ui32UID,
 					(void*)psSyncCheckpointInt,
 					(void*)psSyncCheckpointInt->psSyncCheckpointBlock->psContext->psSubAllocRA,
 					psSyncCheckpointInt->uiSpanAddr));
 #endif
-			RA_Free(psSyncCheckpointInt->psSyncCheckpointBlock->psContext->psSubAllocRA,
-			        psSyncCheckpointInt->uiSpanAddr);
+			_FreeSyncCheckpoint(psSyncCheckpointInt);
 			ui32ItemsFreed++;
 		}
 		else

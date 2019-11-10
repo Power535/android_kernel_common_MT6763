@@ -124,12 +124,12 @@ static int rk33_clk_set_normal_node(struct clk* node, unsigned long rate)
 	int ret = 0;
 
 	if (!node) {
-		printk("rk33_clk_set_normal_node error \r\n");
+		pr_info("rk33_clk_set_normal_node error \r\n");
 		ret = -1;
 	}
 	ret = clk_set_rate(node, rate);
 	if (ret)
-		printk("clk_set_rate error \r\n");
+		pr_info("clk_set_rate error \r\n");
 
 	return ret;
 }
@@ -139,12 +139,12 @@ static int rk33_clk_set_dvfs_node(struct dvfs_node *node, unsigned long rate)
 	int ret = 0;
 
 	if (!node) {
-		printk("rk33_clk_set_dvfs_node error \r\n");
+		pr_info("rk33_clk_set_dvfs_node error \r\n");
 		ret = -1;
 	}
 	ret = dvfs_clk_set_rate(node, rate);
 	if (ret)
-		printk("dvfs_clk_set_rate error \r\n");
+		pr_info("dvfs_clk_set_rate error \r\n");
 
 	return ret;
 }
@@ -166,11 +166,11 @@ void rkSetFrequency(IMG_UINT32 ui32Frequency)
 #endif
 
 	if (!g_platform->aclk_gpu_mem || !g_platform->aclk_gpu_cfg) {
-		printk("aclk_gpu_mem or aclk_gpu_cfg not init\n");
+		pr_info("aclk_gpu_mem or aclk_gpu_cfg not init\n");
 		return;
 	}
 	if (!g_platform->gpu_clk_node && !g_platform->clk_gpu) {
-		pr_err("%s:clk_gpu & gpu_clk_node is null\n", __func__);
+		pr_info("%s:clk_gpu & gpu_clk_node is null\n", __func__);
 		return;
 	}
 
@@ -269,13 +269,13 @@ static void RgxEnableClock(struct rk_context *platform)
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0))
 	if (!platform->gpu_clk_node && !platform->clk_gpu)
 	{
-		printk("gpu_clk_node and clk_gpu are both null\n");
+		pr_info("gpu_clk_node and clk_gpu are both null\n");
 		return;
 	}
 #else
 	if (!platform->sclk_gpu_core)
 	{
-		printk("sclk_gpu_core is null\n");
+		pr_info("sclk_gpu_core is null\n");
 		return;
 	}
 #endif
@@ -301,12 +301,12 @@ static void RgxDisableClock(struct rk_context *platform)
 {
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0))
 	if (!platform->gpu_clk_node && !platform->clk_gpu) {
-		printk("gpu_clk_node and clk_gpu are both null\n");
+		pr_info("gpu_clk_node and clk_gpu are both null\n");
 		return;
 	}
 #else
 	if (!platform->sclk_gpu_core) {
-		printk("sclk_gpu_core is null");
+		pr_info("sclk_gpu_core is null");
 		return;
 	}
 #endif
@@ -453,7 +453,7 @@ static unsigned long model_static_power(unsigned long voltage)
 
 		ret = gpu_tz->ops->get_temp(gpu_tz, &temperature);
 		if (ret) {
-			pr_warn_ratelimited("Error reading temperature for gpu thermal zone: %d\n",
+			pr_info("Error reading temperature for gpu thermal zone: %d\n",
 					ret);
 			temperature = FALLBACK_STATIC_TEMPERATURE;
 		}
@@ -512,24 +512,24 @@ int rk_power_model_simple_init(struct device *dev)
 	power_model_node = of_get_child_by_name(dev->of_node,
 			"power_model");
 	if (!power_model_node) {
-		dev_err(dev, "could not find power_model node\n");
+		dev_info(dev, "could not find power_model node\n");
 		return -ENODEV;
 	}
 	if (!of_device_is_compatible(power_model_node,
 			"arm,mali-simple-power-model")) {
-		dev_err(dev, "power_model incompatible with simple power model\n");
+		dev_info(dev, "power_model incompatible with simple power model\n");
 		return -ENODEV;
 	}
 
 	if (of_property_read_string(power_model_node, "thermal-zone",
 			&tz_name)) {
-		dev_err(dev, "ts in power_model not available\n");
+		dev_info(dev, "ts in power_model not available\n");
 		return -EINVAL;
 	}
 
 	gpu_tz = thermal_zone_get_zone_by_name(tz_name);
 	if (IS_ERR(gpu_tz)) {
-		pr_warn_ratelimited("Error getting gpu thermal zone (%ld), not yet ready?\n",
+		pr_info("Error getting gpu thermal zone (%ld), not yet ready?\n",
 				PTR_ERR(gpu_tz));
 		gpu_tz = NULL;
 
@@ -538,22 +538,22 @@ int rk_power_model_simple_init(struct device *dev)
 
 	if (of_property_read_u32(power_model_node, "static-power",
 			&static_power)) {
-		dev_err(dev, "static-power in power_model not available\n");
+		dev_info(dev, "static-power in power_model not available\n");
 		return -EINVAL;
 	}
 	if (of_property_read_u32(power_model_node, "dynamic-power",
 			&dynamic_power)) {
-		dev_err(dev, "dynamic-power in power_model not available\n");
+		dev_info(dev, "dynamic-power in power_model not available\n");
 		return -EINVAL;
 	}
 	if (of_property_read_u32(power_model_node, "voltage",
 			&voltage)) {
-		dev_err(dev, "voltage in power_model not available\n");
+		dev_info(dev, "voltage in power_model not available\n");
 		return -EINVAL;
 	}
 	if (of_property_read_u32(power_model_node, "frequency",
 			&frequency)) {
-		dev_err(dev, "frequency in power_model not available\n");
+		dev_info(dev, "frequency in power_model not available\n");
 		return -EINVAL;
 	}
 	voltage_squared = (voltage * voltage) / 1000;
@@ -563,7 +563,7 @@ int rk_power_model_simple_init(struct device *dev)
 			* 1000) / frequency;
 
 	if (of_property_read_u32_array(power_model_node, "ts", (u32 *)ts, 4)) {
-		dev_err(dev, "ts in power_model not available\n");
+		dev_info(dev, "ts in power_model not available\n");
 		return -EINVAL;
 	}
 

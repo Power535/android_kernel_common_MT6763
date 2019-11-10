@@ -1124,6 +1124,10 @@ LCM_DRIVER *lcm_driver_list[] = {
 	&nt35695B_fhd_dsi_vdo_auo_rt5081_hdp_lcm_drv,
 #endif
 
+#if defined(NT35695B_FHD_DSI_VDO_AUO_RT5081_HDP_19_9)
+	&nt35695B_fhd_dsi_vdo_auo_rt5081_hdp_19_9_lcm_drv,
+#endif
+
 #if defined(NT36672_FHDP_DSI_VDO_TIANMA_NT50358)
 	&nt36672_fhdp_dsi_vdo_tianma_nt50358_lcm_drv,
 #endif

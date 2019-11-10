@@ -25,6 +25,11 @@ subdir-ccflags-y += -I$(MTK_CUSTOM_PATH)/imgsensor/inc \
                     -I$(CAM_CAL_SRC_PATH)/common/$(COMMON_VERSION)
 subdir-ccflags-y += -I$(srctree)/drivers/i2c/busses/
 
+# Platform header
+ifneq ($(wildcard $(CAM_CAL_PLATFORM_SRC_PATH)/eeprom_platform_def.h),)
+subdir-ccflags-y += -DEEPROM_PLATFORM_DEFINE
+endif
+
 # Common code
 obj-y += ../common/$(COMMON_VERSION)/eeprom_driver.o
 obj-y += ../common/$(COMMON_VERSION)/eeprom_i2c_common_driver.o

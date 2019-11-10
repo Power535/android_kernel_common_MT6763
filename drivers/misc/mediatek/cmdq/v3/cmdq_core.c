@@ -188,6 +188,7 @@ static DEFINE_SPINLOCK(gCmdqExecLock);
 static DEFINE_SPINLOCK(gCmdqRecordLock);
 static DEFINE_MUTEX(gCmdqResourceMutex);
 static DEFINE_MUTEX(gCmdqErrMutex);
+static DEFINE_MUTEX(cmdq_inst_check_mutex);
 
 /* The main context structure */
 static wait_queue_head_t *gCmdWaitQueue;		/* task done notification */
@@ -252,6 +253,9 @@ static struct MemRecordStruct g_cmdq_mem_records[9];
 static struct MemMonitorStruct g_cmdq_mem_monitor;
 
 static struct StressContextStruct gStressContext;
+
+/* debug for alloc hw buffer count */
+static atomic_t cmdq_alloc_cnt[CMDQ_CLT_MAX + 1];
 
 u32 cmdq_core_max_task_in_thread(s32 thread)
 {
@@ -446,7 +450,7 @@ static s32 cmdq_delay_thread_init(void)
 	CMDQ_LOG("[DelayThread]create delay thread task in %s task size:%u sram size:%u\n",
 		use_sram ? "SRAM" : "DRAM", buffer_size, free_sram_size);
 
-	p_va = cmdq_core_alloc_hw_buffer(cmdq_dev_get(), buffer_size, &pa, GFP_KERNEL);
+	p_va = cmdq_core_alloc_hw_buffer_clt(cmdq_dev_get(), buffer_size, &pa, GFP_KERNEL, CMDQ_CLT_CMDQ);
 
 	memcpy(p_va, p_delay_thread_buffer, buffer_size);
 
@@ -558,8 +562,8 @@ static int32_t cmdq_delay_thread_stop(void)
 
 static void cmdq_delay_thread_deinit(void)
 {
-	cmdq_core_free_hw_buffer(cmdq_dev_get(), g_delay_thread_cmd.buffer_size,
-		g_delay_thread_cmd.p_va_base, g_delay_thread_cmd.mva_base);
+	cmdq_core_free_hw_buffer_clt(cmdq_dev_get(), g_delay_thread_cmd.buffer_size,
+		g_delay_thread_cmd.p_va_base, g_delay_thread_cmd.mva_base, CMDQ_CLT_CMDQ);
 	memset(&g_delay_thread_cmd, 0x0, sizeof(g_delay_thread_cmd));
 }
 
@@ -1176,6 +1180,25 @@ void cmdq_core_monitor_record_free(size_t size)
 	spin_unlock(&gCmdqMemMonitorLock);
 }
 
+void *cmdq_core_alloc_hw_buffer_clt(struct device *dev, size_t size, dma_addr_t *dma_handle,
+	const gfp_t flag, enum CMDQ_CLT_ENUM clt)
+{
+	s32 alloc_cnt, alloc_max = 1 << 10;
+	void *ret = cmdq_core_alloc_hw_buffer(dev, size, dma_handle, flag);
+
+	if (!ret)
+		return NULL;
+
+	alloc_cnt = atomic_inc_return(&cmdq_alloc_cnt[CMDQ_CLT_MAX]);
+	alloc_cnt = atomic_inc_return(&cmdq_alloc_cnt[clt]);
+	if (alloc_cnt > alloc_max)
+		CMDQ_ERR("clt:%u MDP(1):%u CMDQ(2):%u GNRL(3):%u DISP(4):%u TTL:%u\n",
+			clt, atomic_read(&cmdq_alloc_cnt[1]), atomic_read(&cmdq_alloc_cnt[2]),
+			atomic_read(&cmdq_alloc_cnt[3]), atomic_read(&cmdq_alloc_cnt[4]),
+			atomic_read(&cmdq_alloc_cnt[5]));
+	return ret;
+}
+
 void *cmdq_core_alloc_hw_buffer(struct device *dev, size_t size, dma_addr_t *dma_handle,
 	const gfp_t flag)
 {
@@ -1217,6 +1240,14 @@ void *cmdq_core_alloc_hw_buffer(struct device *dev, size_t size, dma_addr_t *dma
 	CMDQ_VERBOSE("%s, pVA:0x%p, PA:0x%pa, PAout:0x%pa\n", __func__, pVA, &PA, &(*dma_handle));
 
 	return pVA;
+}
+
+void cmdq_core_free_hw_buffer_clt(struct device *dev, size_t size, void *cpu_addr,
+	dma_addr_t dma_handle, enum CMDQ_CLT_ENUM clt)
+{
+	atomic_dec(&cmdq_alloc_cnt[CMDQ_CLT_MAX]);
+	atomic_dec(&cmdq_alloc_cnt[clt]);
+	cmdq_core_free_hw_buffer(dev, size, cpu_addr, dma_handle);
 }
 
 void cmdq_core_free_hw_buffer(struct device *dev, size_t size, void *cpu_addr,
@@ -1336,15 +1367,37 @@ void cmdq_core_free_hw_buffer_pool(void *va, dma_addr_t dma_handle)
 	atomic_dec(&g_pool_buffer_count);
 }
 
+static enum CMDQ_CLT_ENUM cmdq_clt_enum_get(const s32 scen)
+{
+	switch (scen) {
+	case CMDQ_SCENARIO_USER_MDP:
+	case CMDQ_SCENARIO_USER_SPACE:
+	case CMDQ_SCENARIO_DEBUG_MDP:
+		return CMDQ_CLT_MDP;
+	case CMDQ_SCENARIO_DEBUG:
+	case CMDQ_SCENARIO_DEBUG_PREFETCH:
+	case CMDQ_SCENARIO_TIMER_LOOP:
+	case CMDQ_SCENARIO_MOVE:
+	case CMDQ_SCENARIO_SRAM_LOOP:
+		return CMDQ_CLT_CMDQ;
+	case CMDQ_SCENARIO_KERNEL_CONFIG_GENERAL:
+		return CMDQ_CLT_GNRL;
+	default:
+		return CMDQ_CLT_DISP;
+	}
+	return CMDQ_CLT_UNKN;
+}
+
 void cmdq_core_free_reg_buffer(struct TaskStruct *task)
 {
 	CMDQ_VERBOSE("COMMAND: free result buf VA:0x%p PA:%pa\n",
 		task->regResults, &task->regResultsMVA);
 
-	cmdq_core_free_hw_buffer(cmdq_dev_get(),
+	cmdq_core_free_hw_buffer_clt(cmdq_dev_get(),
 		task->regCount * sizeof(task->regResults[0]),
 		task->regResults,
-		task->regResultsMVA);
+		task->regResultsMVA,
+		cmdq_clt_enum_get(task->scenario));
 
 	task->regResults = NULL;
 	task->regResultsMVA = 0;
@@ -1358,10 +1411,11 @@ void cmdq_core_alloc_reg_buffer(struct TaskStruct *task)
 		cmdq_core_free_reg_buffer(task);
 	}
 
-	task->regResults = cmdq_core_alloc_hw_buffer(cmdq_dev_get(),
+	task->regResults = cmdq_core_alloc_hw_buffer_clt(cmdq_dev_get(),
 		task->regCount * sizeof(task->regResults[0]),
 		&task->regResultsMVA,
-		GFP_KERNEL);
+		GFP_KERNEL,
+		cmdq_clt_enum_get(task->scenario));
 
 	CMDQ_VERBOSE("COMMAND: allocate result buf VA:0x%p PA:%pa\n",
 		task->regResults, &task->regResultsMVA);
@@ -2243,7 +2297,7 @@ static void cmdq_core_task_ctor(void *param)
 	pTask->exclusive_thread = CMDQ_INVALID_THREAD;
 }
 
-void cmdq_task_free_buffer_impl(struct list_head *cmd_buffer_list)
+void cmdq_task_free_buffer_impl(struct list_head *cmd_buffer_list, enum CMDQ_CLT_ENUM clt)
 {
 	struct list_head *p, *n = NULL;
 	struct CmdBufferStruct *cmd_buffer = NULL;
@@ -2255,8 +2309,8 @@ void cmdq_task_free_buffer_impl(struct list_head *cmd_buffer_list)
 		if (cmd_buffer->use_pool)
 			cmdq_core_free_hw_buffer_pool(cmd_buffer->pVABase, cmd_buffer->MVABase);
 		else
-			cmdq_core_free_hw_buffer(cmdq_dev_get(), CMDQ_CMD_BUFFER_SIZE,
-				cmd_buffer->pVABase, cmd_buffer->MVABase);
+			cmdq_core_free_hw_buffer_clt(cmdq_dev_get(), CMDQ_CMD_BUFFER_SIZE,
+				cmd_buffer->pVABase, cmd_buffer->MVABase, clt);
 		kfree(cmd_buffer);
 	}
 }
@@ -2266,7 +2320,7 @@ void cmdq_task_free_buffer_work(struct work_struct *work_item)
 	struct CmdFreeWorkStruct *free_work;
 
 	free_work = container_of(work_item, struct CmdFreeWorkStruct, free_buffer_work);
-	cmdq_task_free_buffer_impl(&free_work->cmd_buffer_list);
+	cmdq_task_free_buffer_impl(&free_work->cmd_buffer_list, free_work->clt);
 	kfree(free_work);
 }
 
@@ -2275,6 +2329,7 @@ static void cmdq_core_task_free_buffer_impl(struct TaskStruct *task)
 	struct CmdFreeWorkStruct *free_work_item;
 
 	free_work_item = kzalloc(sizeof(struct CmdFreeWorkStruct), GFP_KERNEL);
+	free_work_item->clt = cmdq_clt_enum_get(task->scenario);
 	if (likely(free_work_item)) {
 		list_replace_init(&task->cmd_buffer_list,
 			&free_work_item->cmd_buffer_list);
@@ -2286,7 +2341,7 @@ static void cmdq_core_task_free_buffer_impl(struct TaskStruct *task)
 		CMDQ_ERR(
 			"Unable to start free buffer work, free directly, task: 0x%p\n",
 			task);
-		cmdq_task_free_buffer_impl(&task->cmd_buffer_list);
+		cmdq_task_free_buffer_impl(&task->cmd_buffer_list, free_work_item->clt);
 		INIT_LIST_HEAD(&task->cmd_buffer_list);
 	}
 
@@ -2331,8 +2386,8 @@ static int32_t cmdq_core_task_alloc_single_buffer_list(struct TaskStruct *pTask,
 	buffer_entry->use_pool = (bool)buffer_entry->pVABase;
 
 	if (!buffer_entry->pVABase) {
-		buffer_entry->pVABase = cmdq_core_alloc_hw_buffer(cmdq_dev_get(), CMDQ_CMD_BUFFER_SIZE,
-			&buffer_entry->MVABase, GFP_KERNEL);
+		buffer_entry->pVABase = cmdq_core_alloc_hw_buffer_clt(cmdq_dev_get(), CMDQ_CMD_BUFFER_SIZE,
+			&buffer_entry->MVABase, GFP_KERNEL, cmdq_clt_enum_get(pTask->scenario));
 	}
 
 	if (!buffer_entry->pVABase) {
@@ -3514,29 +3569,57 @@ static bool cmdq_core_check_instr_valid(const uint64_t instr)
 	return false;
 }
 
-static int32_t cmdq_core_check_task_valid(struct TaskStruct *pTask)
+static bool cmdq_core_check_user_valid(void *src, u32 size)
 {
-
-	struct CmdBufferStruct *cmd_buffer = NULL;
-	int32_t cmd_size = CMDQ_CMD_BUFFER_SIZE;
-	uint64_t *va;
+	void *buffer;
+	u64 *va;
 	bool ret = true;
+	u32 copy_size;
+	u32 remain_size = size;
+	void *cur_src = src;
+	CMDQ_TIME cost = sched_clock();
 
-	list_for_each_entry(cmd_buffer, &pTask->cmd_buffer_list, listEntry) {
-		if (list_is_last(&cmd_buffer->listEntry,
-			&pTask->cmd_buffer_list))
-			cmd_size -= pTask->buf_available_size;
-
-		for (va = (uint64_t *)cmd_buffer->pVABase; ret &&
-			(unsigned long)(va + 1) <
-			(unsigned long)cmd_buffer->pVABase + cmd_size; va++)
-			ret &= cmdq_core_check_instr_valid(*va);
-
-		if (ret && (*va >> 56) != CMDQ_CODE_JUMP)
-			ret &= cmdq_core_check_instr_valid(*va);
-		if (!ret)
-			break;
+	mutex_lock(&cmdq_inst_check_mutex);
+	if (!gCmdqContext.inst_check_buffer) {
+		gCmdqContext.inst_check_buffer = kmalloc(CMDQ_CMD_BUFFER_SIZE,
+			GFP_KERNEL);
+		if (!gCmdqContext.inst_check_buffer) {
+			CMDQ_ERR("fail to alloc check buffer\n");
+			mutex_unlock(&cmdq_inst_check_mutex);
+			return false;
+		}
 	}
+
+	buffer = gCmdqContext.inst_check_buffer;
+
+	while (remain_size > 0 && ret) {
+		copy_size = remain_size > CMDQ_CMD_BUFFER_SIZE ?
+			CMDQ_CMD_BUFFER_SIZE : remain_size;
+		if (copy_from_user(buffer, cur_src, copy_size)) {
+			CMDQ_ERR("copy from user fail size:%u\n", size);
+			ret = false;
+			break;
+		}
+
+		for (va = (u64 *)buffer;
+			va < (u64 *)(buffer + copy_size); va++) {
+			ret = cmdq_core_check_instr_valid(*va);
+			if (unlikely(!ret))
+				break;
+		}
+
+		remain_size -= copy_size;
+		cur_src += copy_size;
+	}
+
+	mutex_unlock(&cmdq_inst_check_mutex);
+
+	cost = sched_clock() - cost;
+	do_div(cost, 1000);
+
+	CMDQ_MSG("%s size:%u cost:%lluus ret:%s\n", __func__, size, (u64)cost,
+		ret ? "true" : "false");
+
 	return ret;
 }
 
@@ -3573,6 +3656,11 @@ static int32_t cmdq_core_insert_read_reg_command(struct TaskStruct *pTask,
 		copyCmdSize = pCommandDesc->blockSize - 2 * CMDQ_INST_SIZE;
 	else
 		copyCmdSize = pCommandDesc->blockSize;
+
+	if (userSpaceRequest && !cmdq_core_check_user_valid(copyCmdSrc,
+		pCommandDesc->blockSize))
+		return -EFAULT;
+
 	status = cmdq_core_copy_cmd_to_task_impl(pTask, copyCmdSrc,
 		copyCmdSize, userSpaceRequest);
 	if (status < 0)
@@ -3585,9 +3673,6 @@ static int32_t cmdq_core_insert_read_reg_command(struct TaskStruct *pTask,
 		"[CMD] line:%d CMDEnd:%p cmdSize:%d bufferSize:%u block size:%u\n",
 		__LINE__, pTask->pCMDEnd, pTask->commandSize,
 		pTask->bufferSize, pCommandDesc->blockSize);
-
-	if (userSpaceRequest && !cmdq_core_check_task_valid(pTask))
-		return -EFAULT;
 
 	/* If no read request, no post-process needed. Do verify and stop */
 	if (!postInstruction) {
@@ -3738,6 +3823,7 @@ static struct TaskStruct *cmdq_core_acquire_task(
 	int32_t status;
 	CMDQ_TIME time_cost;
 	struct TaskPrivateStruct *private = NULL, *desc_private = NULL;
+	const u64 inorder_mask = 1ll << CMDQ_ENG_INORDER;
 
 	CMDQ_MSG(
 		"-->TASK: acquire task begin CMD:0x%p, size:%d, Eng:0x%016llx\n",
@@ -3758,7 +3844,7 @@ static struct TaskStruct *cmdq_core_acquire_task(
 		pTask->desc = pCommandDesc;
 		pTask->scenario = pCommandDesc->scenario;
 		pTask->priority = pCommandDesc->priority;
-		pTask->engineFlag = pCommandDesc->engineFlag;
+		pTask->engineFlag = pCommandDesc->engineFlag & ~inorder_mask;
 		pTask->loopCallback = loopCB;
 		pTask->loopData = loopData;
 		pTask->taskState = TASK_STATE_WAITING;
@@ -3800,6 +3886,9 @@ static struct TaskStruct *cmdq_core_acquire_task(
 			pTask->res_engine_flag_acquire = 0;
 			pTask->res_engine_flag_release = 0;
 		}
+
+		if (pCommandDesc->engineFlag & inorder_mask)
+			pTask->force_inorder = true;
 
 		/* reset private data from desc */
 		desc_private = (struct TaskPrivateStruct *)CMDQ_U32_PTR(
@@ -5584,7 +5673,8 @@ s32 cmdqCoreDebugDumpSRAM(u32 sram_base, u32 command_size)
 		cpr_offset = CMDQ_CPR_OFFSET(sram_base);
 		CMDQ_LOG("==Dump SRAM: size (%d) CPR OFFSET(0x%x), ADDR(0x%x)\n",
 			command_size, cpr_offset, sram_base);
-		p_va_dest = cmdq_core_alloc_hw_buffer(cmdq_dev_get(), command_size, &pa_dest, GFP_KERNEL);
+		p_va_dest = cmdq_core_alloc_hw_buffer_clt(cmdq_dev_get(),
+			command_size, &pa_dest, GFP_KERNEL, CMDQ_CLT_CMDQ);
 		if (p_va_dest == NULL)
 			break;
 		status = cmdq_task_copy_from_sram(pa_dest, cpr_offset, command_size);
@@ -5598,7 +5688,7 @@ s32 cmdqCoreDebugDumpSRAM(u32 sram_base, u32 command_size)
 	} while (0);
 
 	if (p_va_dest != NULL)
-		cmdq_core_free_hw_buffer(cmdq_dev_get(), command_size, p_va_dest, pa_dest);
+		cmdq_core_free_hw_buffer_clt(cmdq_dev_get(), command_size, p_va_dest, pa_dest, CMDQ_CLT_CMDQ);
 
 	return status;
 }
@@ -7119,6 +7209,51 @@ static struct TaskStruct *cmdq_core_search_task_by_pc(uint32_t threadPC,
 	return pTask;
 }
 
+static void cmdq_core_reset_dsi(struct TaskStruct *pTask, s32 thread)
+{
+#ifdef CMDQ_DISP_DSI_DEBUG
+	uint32_t *pcVA = NULL, pcPA = 0;
+	uint32_t insts[4] = { 0 };
+	char parsedInstruction[128] = { 0 };
+
+	if (pTask->scenario != CMDQ_SCENARIO_DISP_ESD_CHECK &&
+		pTask->scenario != CMDQ_SCENARIO_PRIMARY_DISP)
+		return;
+
+	CMDQ_MSG("ready to verify pre-dump!!\n");
+
+	pcVA = cmdq_core_get_pc(pTask, thread, insts, &pcPA);
+	if (pcVA) {
+		const uint32_t op = (insts[3] & 0xFF000000) >> 24;
+
+		cmdq_core_parse_instruction(pcVA, parsedInstruction,
+			sizeof(parsedInstruction));
+
+		/* for WFE, we specifically dump the event value */
+		if (op == CMDQ_CODE_WFE) {
+			uint32_t regValue = 0;
+			const uint32_t eventID = 0x3FF & insts[3];
+
+			CMDQ_REG_SET32(CMDQ_SYNC_TOKEN_ID, eventID);
+			regValue = CMDQ_REG_GET32(CMDQ_SYNC_TOKEN_VAL);
+			/* DECLAR_EVENT(CMDQ_EVENT_MUTEX0_STREAM_EOF, stream_done_0) */
+			/* stream_done_0 = <130> */
+			if (eventID == 130) {
+				CMDQ_LOG(
+					"Thread %d PC:0x%p(0x%08x) 0x%08x:0x%08x => %s value:%d",
+					thread, pcVA,
+					pcPA, insts[2],
+					insts[3],
+					parsedInstruction,
+					regValue);
+				CMDQ_LOG("call display to reset dsi\n");
+				ddp_dump_and_reset_dsi0();
+			}
+		}
+	}
+#endif
+}
+
 /* Implementation of wait task done
  * Return:
  *     wait time of wait_event_timeout() kernel API
@@ -7170,6 +7305,9 @@ static int32_t cmdq_core_wait_task_done_with_timeout_impl(
 
 		CMDQ_LOG("======= [CMDQ] SW timeout Pre-dump(%d) task:0x%p slot:%d =======\n",
 			retry_count, pTask, slot);
+
+		/* reset dsi if primary display or esd thread entered pre-dump */
+		cmdq_core_reset_dsi(pTask, thread);
 
 		tpr_mask = CMDQ_REG_GET32(CMDQ_TPR_MASK);
 		if (retry_count == 0) {
@@ -8455,6 +8593,7 @@ static s32 cmdq_core_consume_waiting_list(struct work_struct *_ignore,
 	uint32_t user_list_count = 0;
 	uint32_t index = 0;
 	CMDQ_TIME consume_cost;
+	bool force_inorder = false;
 
 	/* when we're suspending, do not execute any tasks. delay & hold them. */
 	if (gCmdqSuspended)
@@ -8473,6 +8612,13 @@ static s32 cmdq_core_consume_waiting_list(struct work_struct *_ignore,
 	list_for_each_safe(p, n, &gCmdqContext.taskWaitList) {
 		struct TaskStruct *pTask = list_entry(p, struct TaskStruct,
 			listEntry);
+
+		if (force_inorder && pTask->force_inorder) {
+			CMDQ_LOG(
+				"skip force inorder handle:0x%p engine:0x%llx\n",
+				pTask, pTask->engineFlag);
+			continue;
+		}
 
 		/* check if task from client and no buffer */
 		if (pTask->is_client_buffer &&
@@ -8514,6 +8660,12 @@ static s32 cmdq_core_consume_waiting_list(struct work_struct *_ignore,
 
 		if (thread == CMDQ_INVALID_THREAD) {
 			/* have to wait, remain in wait list */
+			if (pTask->force_inorder) {
+				CMDQ_LOG(
+					"begin force inorder handle:0x%p engine:0x%llx\n",
+					pTask, pTask->engineFlag);
+				force_inorder = true;
+			}
 			CMDQ_MSG("<--THREAD: acquire thread fail, need to wait\n");
 			if (needLog == true) {
 				/* task wait too long */
@@ -9447,6 +9599,9 @@ void cmdqCoreDeInitialize(void)
 	/* Deinitialize MDP */
 	cmdq_mdp_deinit();
 
+	kfree(gCmdqContext.inst_check_buffer);
+	gCmdqContext.inst_check_buffer = NULL;
+
 	kfree(g_dts_setting.prefetch_size);
 	g_dts_setting.prefetch_size = NULL;
 	kfree(gCmdqContext.thread);
@@ -9456,7 +9611,7 @@ void cmdqCoreDeInitialize(void)
 }
 
 int cmdqCoreAllocWriteAddress(uint32_t count, dma_addr_t *paStart,
-	void *node)
+	void *node, enum CMDQ_CLT_ENUM clt)
 {
 	unsigned long flagsWriteAddr = 0L;
 	struct WriteAddrStruct *pWriteAddr = NULL;
@@ -9493,9 +9648,9 @@ int cmdqCoreAllocWriteAddress(uint32_t count, dma_addr_t *paStart,
 
 		pWriteAddr->count = count;
 		pWriteAddr->va =
-		    cmdq_core_alloc_hw_buffer(cmdq_dev_get(),
+		    cmdq_core_alloc_hw_buffer_clt(cmdq_dev_get(),
 					      count * sizeof(uint32_t), &(pWriteAddr->pa),
-					      GFP_KERNEL);
+					      GFP_KERNEL, clt);
 		pWriteAddr->file_node = node;
 		if (current)
 			pWriteAddr->user = current->pid;
@@ -9538,9 +9693,9 @@ int cmdqCoreAllocWriteAddress(uint32_t count, dma_addr_t *paStart,
 	if (status != 0) {
 		/* release resources */
 		if (pWriteAddr && pWriteAddr->va) {
-			cmdq_core_free_hw_buffer(cmdq_dev_get(),
+			cmdq_core_free_hw_buffer_clt(cmdq_dev_get(),
 						 sizeof(uint32_t) * pWriteAddr->count,
-						 pWriteAddr->va, pWriteAddr->pa);
+						 pWriteAddr->va, pWriteAddr->pa, clt);
 			memset(pWriteAddr, 0, sizeof(struct WriteAddrStruct));
 		}
 
@@ -9663,7 +9818,7 @@ uint32_t cmdqCoreWriteWriteAddress(dma_addr_t pa, uint32_t value)
 }
 
 
-int cmdqCoreFreeWriteAddress(dma_addr_t paStart)
+int cmdqCoreFreeWriteAddress(dma_addr_t paStart, enum CMDQ_CLT_ENUM clt)
 {
 	struct list_head *p, *n = NULL;
 	struct WriteAddrStruct *pWriteAddr = NULL;
@@ -9693,9 +9848,9 @@ int cmdqCoreFreeWriteAddress(dma_addr_t paStart)
 
 	/* release resources */
 	if (pWriteAddr->va) {
-		cmdq_core_free_hw_buffer(cmdq_dev_get(),
+		cmdq_core_free_hw_buffer_clt(cmdq_dev_get(),
 					 sizeof(uint32_t) * pWriteAddr->count,
-					 pWriteAddr->va, pWriteAddr->pa);
+					 pWriteAddr->va, pWriteAddr->pa, clt);
 		memset(pWriteAddr, 0xda, sizeof(struct WriteAddrStruct));
 	}
 
@@ -9723,9 +9878,9 @@ void cmdqCoreFreeWriteAddressNode(void *node)
 
 		list_del(&(waddr->list_node));
 		if (waddr->va) {
-			cmdq_core_free_hw_buffer(cmdq_dev_get(),
+			cmdq_core_free_hw_buffer_clt(cmdq_dev_get(),
 				sizeof(u32) * waddr->count,
-				waddr->va, waddr->pa);
+				waddr->va, waddr->pa, CMDQ_CLT_MDP);
 			kfree(waddr);
 		}
 	}

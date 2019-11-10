@@ -41,9 +41,9 @@ static unsigned int gMAU_candidate_id = M4U0_MAU_NR - 1;
 
 static DEFINE_MUTEX(gM4u_seq_mutex);
 
-static M4U_PROG_DIST_T gM4U0_prog_pfh[M4U0_PROG_PFH_NR * M4U_SLAVE_NUM(0)] = { {0} };
+static M4U_PROG_DIST_T gM4U0_prog_pfh[M4U0_PROG_PFH_NR] = { {0} };
 
-/* static M4U_PROG_DIST_T gM4u1_prog_pfh[M4U1_PROG_PFH_NR * M4U_SLAVE_NUM(1)] = {{0}}; */
+/* static M4U_PROG_DIST_T gM4u1_prog_pfh[M4U0_PROG_PFH_NR] = {{0}}; */
 static M4U_PROG_DIST_T *gM4UProgPfh[] = { gM4U0_prog_pfh, NULL };
 
 static DEFINE_MUTEX(gM4u_prog_pfh_mutex);
@@ -1117,18 +1117,10 @@ EXPORT_SYMBOL(smi_common_clock_off);
 
 int m4u_enable_prog_dist_by_id(int port, int id)
 {
-	unsigned long m4u_base;
-	unsigned int m4u_id = m4u_port_2_m4u_id(port);
-	int m4u_slave_id = m4u_port_2_m4u_slave_id(port);
-
-	if (unlikely(m4u_id < 0))
-		return -1;
-
-	m4u_base = gM4UBaseAddr[m4u_id];
+	unsigned long m4u_base = gM4UBaseAddr[m4u_port_2_m4u_id(port)];
 
 	spin_lock(&gM4u_reg_lock);
-	m4uHw_set_field_by_mask(m4u_base,
-	     REG_MMU_PROG_DIST(id, m4u_slave_id), F_PF_EN(1), 1);
+	m4uHw_set_field_by_mask(m4u_base, REG_MMU_PROG_DIST(id), F_PF_EN(1), 1);
 	spin_unlock(&gM4u_reg_lock);
 
 	return 0;
@@ -1136,18 +1128,10 @@ int m4u_enable_prog_dist_by_id(int port, int id)
 
 int m4u_disable_prog_dist_by_id(int port, int id)
 {
-	unsigned long m4u_base;
-	unsigned int m4u_id = m4u_port_2_m4u_id(port);
-	int m4u_slave_id = m4u_port_2_m4u_slave_id(port);
-
-	if (unlikely(m4u_id < 0))
-		return -1;
-
-	m4u_base = gM4UBaseAddr[m4u_id];
+	unsigned long m4u_base = gM4UBaseAddr[m4u_port_2_m4u_id(port)];
 
 	spin_lock(&gM4u_reg_lock);
-	m4uHw_set_field_by_mask(m4u_base,
-	   REG_MMU_PROG_DIST(id, m4u_slave_id), F_PF_EN(1), 0);
+	m4uHw_set_field_by_mask(m4u_base, REG_MMU_PROG_DIST(id), F_PF_EN(1), 0);
 	spin_unlock(&gM4u_reg_lock);
 
 	return 0;
@@ -1157,22 +1141,16 @@ int m4u_config_prog_dist(M4U_PORT_ID port, int dir, int dist, int en, int mm_id,
 {
 	int i, free_id = -1;
 	int m4u_index = m4u_port_2_m4u_id(port);
-	int m4u_slave_id = m4u_port_2_m4u_slave_id(port);
 	unsigned long m4u_base = gM4UBaseAddr[m4u_index];
 	unsigned long larb_base;
 	unsigned int larb, larb_port;
 	M4U_PROG_DIST_T *pProgPfh;
 
-	if (m4u_index == 1) {
-		M4UMSG("%s, invalid m4u_index:%d, port:%d.\n", __func__, m4u_index, port);
-		return -1;
-	}
 	larb = m4u_port_2_larb_id(port);
 	larb_port = m4u_port_2_larb_port(port);
 	larb_base = gLarbBaseAddr[larb];
 
-	pProgPfh =
-		gM4UProgPfh[m4u_index] + M4U_PROG_PFH_NUM(m4u_index) * m4u_slave_id;
+	pProgPfh = gM4UProgPfh[m4u_index];
 
 	mutex_lock(&gM4u_prog_pfh_mutex);
 
@@ -1214,23 +1192,19 @@ int m4u_config_prog_dist(M4U_PORT_ID port, int dir, int dist, int en, int mm_id,
 
 	spin_lock(&gM4u_reg_lock);
 
-	m4uHw_set_field_by_mask(m4u_base,
-		REG_MMU_PROG_DIST(free_id, m4u_slave_id), F_PF_ID_COMP_SEL(1),
-		F_PF_ID_COMP_SEL(!!(sel)));
+	m4uHw_set_field_by_mask(m4u_base, REG_MMU_PROG_DIST(free_id), F_PF_ID_COMP_SEL(1),
+				F_PF_ID_COMP_SEL(!!(sel)));
 
-	m4uHw_set_field_by_mask(m4u_base,
-		REG_MMU_PROG_DIST(free_id, m4u_slave_id), F_PF_ID_COMP_SEL(1),
-		F_PF_DIR(!!(dir)));
+	m4uHw_set_field_by_mask(m4u_base, REG_MMU_PROG_DIST(free_id), F_PF_DIR(1),
+				F_PF_DIR(!!(dir)));
 
-	m4uHw_set_field(m4u_base,
-		REG_MMU_PROG_DIST(free_id, m4u_slave_id),
+	m4uHw_set_field(m4u_base, REG_MMU_PROG_DIST(free_id),
 		F_PF_DIST_MSB - F_PF_DIST_LSB + 1, F_PF_DIST_LSB, dist);
 
-	m4uHw_set_field(m4u_base,
-		REG_MMU_PROG_DIST(free_id, m4u_slave_id),
+	m4uHw_set_field(m4u_base, REG_MMU_PROG_DIST(free_id),
 		F_PF_ID_MSB - F_PF_ID_LSB + 1, F_PF_ID_LSB, F_PF_ID(larb, larb_port, mm_id));
 
-	m4uHw_set_field_by_mask(m4u_base, REG_MMU_PROG_DIST(free_id, m4u_slave_id), F_PF_EN(1), F_PF_EN(!!(en)));
+	m4uHw_set_field_by_mask(m4u_base, REG_MMU_PROG_DIST(free_id), F_PF_EN(1), F_PF_EN(!!(en)));
 
 	spin_unlock(&gM4u_reg_lock);
 
@@ -1246,11 +1220,6 @@ int m4u_invalid_prog_dist_by_id(int port)
 	M4U_PROG_DIST_T *pProgPfh =
 		gM4UProgPfh[m4u_index] + M4U_PROG_PFH_NUM(m4u_index) * m4u_slave_id;
 
-	if (m4u_index == 1) {
-		M4UMSG("%s, invalid m4u_index:%d, port:%d.\n", __func__, m4u_index, port);
-		return -1;
-	}
-
 	mutex_lock(&gM4u_prog_pfh_mutex);
 	for (i = 0; i < M4U_PROG_PFH_NUM(m4u_index); i++) {
 		if (pProgPfh[i].Enabled == 1) {
@@ -1263,13 +1232,13 @@ int m4u_invalid_prog_dist_by_id(int port)
 	mutex_unlock(&gM4u_prog_pfh_mutex);
 
 	if (i == M4U_PROG_PFH_NUM(m4u_index)) {
-		/* M4UMSG("m4u info: m4u_invalid_prog_dist_by_id cannot found proj dist set for port %d.\n", port); */
+		/* M4UMSG ("m4u info: m4u_invalid_prog_dist_by_id cannot found proj dist set for port %d.\n", port); */
 		return -1;
 	}
 
 	spin_lock(&gM4u_reg_lock);
 	/* set to default value */
-	M4U_WriteReg32(m4u_base, REG_MMU_PROG_DIST(i, m4u_slave_id), 0x800);
+	M4U_WriteReg32(m4u_base, REG_MMU_PROG_DIST(i), 0x800);
 	spin_unlock(&gM4u_reg_lock);
 
 	return 0;
@@ -1695,7 +1664,7 @@ void m4u_print_perf_counter(int m4u_index, int m4u_slave_id, const char *msg)
 }
 
 
-#define M4U_REG_BACKUP_SIZE     (160*sizeof(unsigned int))
+#define M4U_REG_BACKUP_SIZE     (100*sizeof(unsigned int))
 static unsigned int *pM4URegBackUp;
 static unsigned int gM4u_reg_backup_real_size;
 
@@ -1726,19 +1695,18 @@ int m4u_reg_backup(void)
 		__M4U_BACKUP(m4u_base, REG_MMU_HW_DEBUG, *(pReg++));
 		__M4U_BACKUP(m4u_base, REG_MMU_NON_BLOCKING_DIS, *(pReg++));
 		__M4U_BACKUP(m4u_base, REG_MMU_LEGACY_4KB_MODE, *(pReg++));
+		for (dist = 0; dist < MMU_TOTAL_PROG_DIST_NR; dist++)
+			__M4U_BACKUP(m4u_base, REG_MMU_PROG_DIST(dist), *(pReg++));
 		__M4U_BACKUP(m4u_base, REG_MMU_CTRL_REG, *(pReg++));
 		__M4U_BACKUP(m4u_base, REG_MMU_IVRP_PADDR, *(pReg++));
 		__M4U_BACKUP(m4u_base, REG_MMU_INT_L2_CONTROL, *(pReg++));
 		__M4U_BACKUP(m4u_base, REG_MMU_INT_MAIN_CONTROL, *(pReg++));
+
 		for (m4u_slave = 0; m4u_slave < M4U_SLAVE_NUM(m4u_id); m4u_slave++) {
 			for (seq = 0; seq < M4U_SEQ_NUM(m4u_id); seq++) {
 				__M4U_BACKUP(m4u_base, REG_MMU_SQ_START(m4u_slave, seq), *(pReg++));
 				__M4U_BACKUP(m4u_base, REG_MMU_SQ_END(m4u_slave, seq), *(pReg++));
 			}
-
-			for (dist = 0; dist < MMU_TOTAL_PROG_DIST_NR; dist++)
-				__M4U_BACKUP(m4u_base,
-				   REG_MMU_PROG_DIST(dist, m4u_slave), *(pReg++));
 
 			for (mau = 0; mau < MAU_NR_PER_M4U_SLAVE; mau++) {
 				__M4U_BACKUP(m4u_base, REG_MMU_MAU_START(m4u_slave, mau),
@@ -1789,6 +1757,9 @@ int m4u_reg_restore(void)
 		__M4U_RESTORE(m4u_base, REG_MMU_HW_DEBUG, *(pReg++));
 		__M4U_RESTORE(m4u_base, REG_MMU_NON_BLOCKING_DIS, *(pReg++));
 		__M4U_RESTORE(m4u_base, REG_MMU_LEGACY_4KB_MODE, *(pReg++));
+		for (dist = 0; dist < MMU_TOTAL_PROG_DIST_NR; dist++)
+			__M4U_RESTORE(m4u_base, REG_MMU_PROG_DIST(dist), *(pReg++));
+
 		__M4U_RESTORE(m4u_base, REG_MMU_CTRL_REG, *(pReg++));
 		__M4U_RESTORE(m4u_base, REG_MMU_IVRP_PADDR, *(pReg++));
 		__M4U_RESTORE(m4u_base, REG_MMU_INT_L2_CONTROL, *(pReg++));
@@ -1801,10 +1772,6 @@ int m4u_reg_restore(void)
 					      *(pReg++));
 				__M4U_RESTORE(m4u_base, REG_MMU_SQ_END(m4u_slave, seq), *(pReg++));
 			}
-
-			for (dist = 0; dist < MMU_TOTAL_PROG_DIST_NR; dist++)
-				__M4U_RESTORE(m4u_base,
-				    REG_MMU_PROG_DIST(dist, m4u_slave), *(pReg++));
 
 			for (mau = 0; mau < MAU_NR_PER_M4U_SLAVE; mau++) {
 				__M4U_RESTORE(m4u_base, REG_MMU_MAU_START(m4u_slave, mau),

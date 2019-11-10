@@ -593,57 +593,6 @@ static int _get_max_layer(unsigned int session_id)
 	return 0;
 }
 
-static int disp_validate_input_params(struct disp_input_config *cfg, int layer_num)
-{
-	if (cfg->layer_id >= layer_num) {
-		DISPERR("layer_id=%d > layer_num=%d\n", cfg->layer_id, layer_num);
-		return -1;
-	}
-	if (cfg->layer_enable) {
-		if ((cfg->src_fmt <= 0) || ((cfg->src_fmt >> 8) == 15) ||
-				((cfg->src_fmt >> 8) > (DISP_FORMAT_DIM >> 8))) {
-			DISPERR("layer_id=%d,src_fmt=0x%x is invalid color format\n",
-					cfg->layer_id, cfg->src_fmt);
-			return -1;
-		}
-	}
-	return 0;
-}
-
-static int disp_validate_output_params(struct disp_output_config *cfg)
-{
-	if ((cfg->fmt <= 0) || ((cfg->fmt >> 8) == 15) ||
-			((cfg->fmt >> 8) > (DISP_FORMAT_DIM >> 8))) {
-		DISPERR("output fmt=0x%x is invalid color format\n", cfg->fmt);
-		return -1;
-	}
-	return 0;
-}
-
-int disp_validate_ioctl_params(struct disp_frame_cfg_t *cfg)
-{
-	int i, max_layer_num;
-
-	max_layer_num = _get_max_layer(cfg->session_id);
-	if (max_layer_num <= 0)
-		return -1;
-
-	if (cfg->input_layer_num > max_layer_num) {
-		DISPERR("sess:0x%x layer_num %d>%d\n", cfg->session_id,
-				cfg->input_layer_num, max_layer_num);
-		return -1;
-	}
-
-	for (i = 0; i < cfg->input_layer_num; i++)
-		if (disp_validate_input_params(&cfg->input_cfg[i], max_layer_num) != 0)
-			return -1;
-
-	if (cfg->output_en && disp_validate_output_params(&cfg->output_cfg) != 0)
-		return -1;
-
-	return 0;
-}
-
 static int disp_input_get_dirty_roi(struct disp_frame_cfg_t *cfg)
 {
 	int i;
@@ -689,17 +638,8 @@ int disp_input_free_dirty_roi(struct disp_frame_cfg_t *cfg)
 {
 	int i;
 
-	for (i = 0; i < cfg->input_layer_num; i++) {
-		if (i >= _get_max_layer(cfg->session_id))
-			break;
-		if (!cfg->input_cfg[i].layer_enable ||
-			!cfg->input_cfg[i].dirty_roi_num)
-			continue;
-		if (cfg->input_cfg[i].dirty_roi_addr != NULL) {
-			kfree(cfg->input_cfg[i].dirty_roi_addr);
-			cfg->input_cfg[i].dirty_roi_addr = NULL;
-		}
-	}
+	for (i = 0; i < cfg->input_layer_num; i++)
+		kfree(cfg->input_cfg[i].dirty_roi_addr);
 
 	return 0;
 }
@@ -943,35 +883,21 @@ static int __frame_config(struct frame_queue_t *frame_node)
 }
 static int _ioctl_frame_config(unsigned long arg)
 {
-	void *ret_val = NULL;
 	struct frame_queue_t *frame_node;
 	struct disp_frame_cfg_t *frame_cfg;
 
 	frame_node = frame_queue_node_create();
-	if (IS_ERR_OR_NULL(frame_node)) {
-		ret_val = ERR_PTR(-ENOMEM);
-		DISPERR("[FB Driver]: frame queue node create failed! line:%d\n", __LINE__);
-		return PTR_ERR(ret_val);
-	}
+	if (IS_ERR_OR_NULL(frame_node))
+		return PTR_ERR(frame_node);
 
 	frame_cfg = &frame_node->frame_cfg;
 
 	if (copy_from_user(frame_cfg, (void __user *)arg, sizeof(*frame_cfg))) {
-		ret_val = ERR_PTR(-EFAULT);
-		DISPERR("[FB Driver]: copy_from_user failed! line:%d\n", __LINE__);
-		goto Error;
-	}
-
-	if (disp_validate_ioctl_params(frame_cfg)) {
-		ret_val = ERR_PTR(-EINVAL);
-		goto Error;
+		pr_err("[FB Driver]: copy_from_user failed! line:%d\n", __LINE__);
+		return -EINVAL;
 	}
 
 	return __frame_config(frame_node);
-
-Error:
-	frame_queue_node_destroy(frame_node);
-	return PTR_ERR(ret_val);
 
 }
 
@@ -1260,6 +1186,8 @@ const char *_session_ioctl_spy(unsigned int cmd)
 		return "DISP_IOCTL_CCORR_EVENTCTL";
 	case DISP_IOCTL_CCORR_GET_IRQ:
 		return "DISP_IOCTL_CCORR_GET_IRQ";
+	case DISP_IOCTL_SUPPORT_COLOR_TRANSFORM:
+		return "DISP_IOCTL_SUPPORT_COLOR_TRANSFORM";
 	case DISP_IOCTL_SET_PQPARAM:
 		return "DISP_IOCTL_SET_PQPARAM";
 	case DISP_IOCTL_GET_PQPARAM:
@@ -1369,6 +1297,7 @@ long mtk_disp_mgr_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	case DISP_IOCTL_SET_CCORR:
 	case DISP_IOCTL_CCORR_EVENTCTL:
 	case DISP_IOCTL_CCORR_GET_IRQ:
+	case DISP_IOCTL_SUPPORT_COLOR_TRANSFORM:
 	case DISP_IOCTL_SET_PQPARAM:
 	case DISP_IOCTL_GET_PQPARAM:
 	case DISP_IOCTL_SET_PQINDEX:
@@ -1573,6 +1502,7 @@ static long mtk_disp_mgr_compat_ioctl(struct file *file, unsigned int cmd,  unsi
 	case DISP_IOCTL_READ_SW_REG:
 	case DISP_IOCTL_CCORR_EVENTCTL:
 	case DISP_IOCTL_CCORR_GET_IRQ:
+	case DISP_IOCTL_SUPPORT_COLOR_TRANSFORM:
 		{
 #ifndef NO_PQ_IOCTL
 			ret = primary_display_user_cmd(cmd, arg);

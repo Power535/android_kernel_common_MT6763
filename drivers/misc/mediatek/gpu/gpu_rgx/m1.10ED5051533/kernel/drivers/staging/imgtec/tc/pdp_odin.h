@@ -388,7 +388,7 @@ static bool pdp_odin_clocks_set(struct device *dev,
 
 	odispl = get_odin_mode(hdisplay, vdisplay);
 	if (!odispl) {
-		dev_err(dev,
+		dev_info(dev,
 				"Error - display mode not supported.\n");
 		return false;
 	}
@@ -570,7 +570,7 @@ static bool pdp_odin_clocks_set(struct device *dev,
 		}
 
 		if (!locked) {
-			dev_err(dev,
+			dev_info(dev,
 					"Error - the MMCM pll did not lock\n");
 			return false;
 		}
@@ -648,7 +648,7 @@ static void pdp_odin_set_syncgen_enabled(struct device *dev,
 		value &= ODN_PDP_INTSTAT_ALL_OURUN_MASK;
 
 		if (value)
-			dev_warn(dev,
+			dev_info(dev,
 				"underruns detected. status=0x%08X\n",
 				value);
 		else
@@ -736,7 +736,7 @@ static void pdp_odin_set_plane_enabled(struct device *dev,
 #endif
 
 	if (plane > 3) {
-		dev_err(dev,
+		dev_info(dev,
 			"Maximum of 4 planes are supported\n");
 		return;
 	}
@@ -794,13 +794,13 @@ static void pdp_odin_set_surface(struct device *dev,
 #endif
 
 	if (plane > 3) {
-		dev_err(dev,
+		dev_info(dev,
 			"Maximum of 4 planes are supported\n");
 		return;
 	}
 
 	if (address & 0xf) {
-		dev_warn(dev,
+		dev_info(dev,
 			 "The frame buffer address is not aligned\n");
 	}
 

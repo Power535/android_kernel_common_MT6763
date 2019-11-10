@@ -92,8 +92,6 @@ static char *dyna_load_pcm_path[] = {
 	[DYNA_LOAD_PCM_DEEPIDLE_BY_MP1] = "pcm_deepidle_by_mp1_mt6355.bin",
 	[DYNA_LOAD_PCM_DEEPIDLE_LPDDR4] = "pcm_deepidle_lpddr4_mt6355.bin",
 	[DYNA_LOAD_PCM_DEEPIDLE_LPDDR4_BY_MP1] = "pcm_deepidle_lpddr4_by_mp1_mt6355.bin",
-	[DYNA_LOAD_PCM_SODI_LPDDR4_2400] = "pcm_sodi_ddrdfs_lpddr4_2400_mt6355.bin",
-	[DYNA_LOAD_PCM_SODI_LPDDR4_2400_BY_MP1] = "pcm_sodi_ddrdfs_lpddr4_2400_by_mp1_mt6355.bin",
 	[DYNA_LOAD_PCM_MAX] = "pcm_path_max",
 };
 #else
@@ -110,8 +108,6 @@ static char *dyna_load_pcm_path[] = {
 	[DYNA_LOAD_PCM_DEEPIDLE_BY_MP1] = "pcm_deepidle_by_mp1.bin",
 	[DYNA_LOAD_PCM_DEEPIDLE_LPDDR4] = "pcm_deepidle_lpddr4.bin",
 	[DYNA_LOAD_PCM_DEEPIDLE_LPDDR4_BY_MP1] = "pcm_deepidle_lpddr4_by_mp1.bin",
-	[DYNA_LOAD_PCM_SODI_LPDDR4_2400] = "pcm_sodi_ddrdfs_lpddr4_2400_mt6355.bin",
-	[DYNA_LOAD_PCM_SODI_LPDDR4_2400_BY_MP1] = "pcm_sodi_ddrdfs_lpddr4_2400_by_mp1_mt6355.bin",
 	[DYNA_LOAD_PCM_MAX] = "pcm_path_max",
 };
 #endif
@@ -128,8 +124,6 @@ MODULE_FIRMWARE(dyna_load_pcm_path[DYNA_LOAD_PCM_DEEPIDLE]);
 MODULE_FIRMWARE(dyna_load_pcm_path[DYNA_LOAD_PCM_DEEPIDLE_BY_MP1]);
 MODULE_FIRMWARE(dyna_load_pcm_path[DYNA_LOAD_PCM_DEEPIDLE_LPDDR4]);
 MODULE_FIRMWARE(dyna_load_pcm_path[DYNA_LOAD_PCM_DEEPIDLE_LPDDR4_BY_MP1]);
-MODULE_FIRMWARE(dyna_load_pcm_path[DYNA_LOAD_PCM_SODI_LPDDR4_2400]);
-MODULE_FIRMWARE(dyna_load_pcm_path[DYNA_LOAD_PCM_SODI_LPDDR4_2400_BY_MP1]);
 #endif
 struct dyna_load_pcm_t dyna_load_pcm[DYNA_LOAD_PCM_MAX];
 

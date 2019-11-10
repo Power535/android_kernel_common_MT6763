@@ -50,6 +50,15 @@ static struct dentry* gpsIntegrationReportReadEntry = NULL;
 #ifdef GED_FDVFS_ENABLE
 static struct dentry *gpsGpuFreqHintEntry;
 #endif
+#if (defined(GED_ENABLE_FB_DVFS) && defined(GED_ENABLE_DYNAMIC_DVFS_MARGIN))
+static struct dentry *gpsDvfsMarginValueEntry;
+#endif
+#ifdef GED_CONFIGURE_LOADING_BASE_DVFS_STEP
+static struct dentry *gpsLoadingBaseDvfsStepEntry;
+#endif
+#ifdef GED_ENABLE_TIMER_BASED_DVFS_MARGIN
+static struct dentry *gpsTimerBaseDvfsMarginEntry;
+#endif
 
 
 
@@ -933,6 +942,204 @@ static const struct seq_operations gsKpi_info_ReadOps = {
 };
 #endif
 
+#if (defined(GED_ENABLE_FB_DVFS) && defined(GED_ENABLE_DYNAMIC_DVFS_MARGIN))
+/* ------------------------------------------------------------------------- */
+static ssize_t ged_dvfs_margin_value_write_entry
+(const char __user *pszBuffer, size_t uiCount, loff_t uiPosition, void *pvData)
+{
+#define GED_HAL_DEBUGFS_SIZE 64
+	char acBuffer[GED_HAL_DEBUGFS_SIZE];
+
+	int i32Value;
+
+	if ((uiCount > 0) && (uiCount < GED_HAL_DEBUGFS_SIZE)) {
+		if (ged_copy_from_user(acBuffer, pszBuffer, uiCount) == 0) {
+			acBuffer[uiCount] = '\0';
+			if (kstrtoint(acBuffer, 0, &i32Value) == 0)
+				mtk_dvfs_margin_value(i32Value);
+		}
+	}
+
+	return uiCount;
+}
+/*-------------------------------------------------------------------*/
+static void *ged_dvfs_margin_value_seq_start(struct seq_file *psSeqFile,
+			loff_t *puiPosition)
+{
+	if (*puiPosition == 0)
+		return SEQ_START_TOKEN;
+
+	return NULL;
+}
+/*-------------------------------------------------------------------*/
+static void ged_dvfs_margin_value_seq_stop(struct seq_file *psSeqFile,
+			void *pvData)
+{
+
+}
+/*-------------------------------------------------------------------*/
+static void *ged_dvfs_margin_value_seq_next(struct seq_file *psSeqFile,
+			void *pvData, loff_t *puiPosition)
+{
+	return NULL;
+}
+/*-------------------------------------------------------------------*/
+static int ged_dvfs_margin_value_seq_show(struct seq_file *psSeqFile,
+			void *pvData)
+{
+	if (pvData != NULL) {
+		int i32DvfsMarginValue;
+
+		if (false == mtk_get_dvfs_margin_value(&i32DvfsMarginValue)) {
+			i32DvfsMarginValue = 0;
+			seq_puts(psSeqFile, "call mtk_get_dvfs_margin_value false\n");
+		}
+		seq_printf(psSeqFile, "%d\n", i32DvfsMarginValue);
+	}
+
+	return 0;
+}
+/* --------------------------------------------------------------- */
+const struct seq_operations gsDvfsMarginValueReadOps = {
+	.start = ged_dvfs_margin_value_seq_start,
+	.stop = ged_dvfs_margin_value_seq_stop,
+	.next = ged_dvfs_margin_value_seq_next,
+	.show = ged_dvfs_margin_value_seq_show,
+};
+#endif
+
+#ifdef GED_CONFIGURE_LOADING_BASE_DVFS_STEP
+/* ------------------------------------------------------------------------- */
+static ssize_t ged_loading_base_dvfs_step_write_entry
+(const char __user *pszBuffer, size_t uiCount, loff_t uiPosition, void *pvData)
+{
+#define GED_HAL_DEBUGFS_SIZE 64
+	char acBuffer[GED_HAL_DEBUGFS_SIZE];
+
+	int i32Value;
+
+	if ((uiCount > 0) && (uiCount < GED_HAL_DEBUGFS_SIZE)) {
+		if (ged_copy_from_user(acBuffer, pszBuffer, uiCount) == 0) {
+			acBuffer[uiCount] = '\0';
+			if (kstrtoint(acBuffer, 0, &i32Value) == 0)
+				mtk_loading_base_dvfs_step(i32Value);
+		}
+	}
+
+	return uiCount;
+}
+/*-----------------------------------------------------------------------------*/
+static void *ged_loading_base_dvfs_step_seq_start(struct seq_file *psSeqFile,
+			loff_t *puiPosition)
+{
+	if (*puiPosition == 0)
+		return SEQ_START_TOKEN;
+
+	return NULL;
+}
+/*-----------------------------------------------------------------------------*/
+static void ged_loading_base_dvfs_step_seq_stop(struct seq_file *psSeqFile,
+			void *pvData)
+{
+
+}
+/*-----------------------------------------------------------------------------*/
+static void *ged_loading_base_dvfs_step_seq_next(struct seq_file *psSeqFile,
+			void *pvData, loff_t *puiPosition)
+{
+	return NULL;
+}
+/*-----------------------------------------------------------------------------*/
+static int ged_loading_base_dvfs_step_seq_show(struct seq_file *psSeqFile,
+			void *pvData)
+{
+	if (pvData != NULL) {
+		int i32StepValue;
+
+		if (false == mtk_get_loading_base_dvfs_step(&i32StepValue)) {
+			i32StepValue = 0;
+			seq_puts(psSeqFile, "call mtk_get_loading_base_dvfs_step false\n");
+		}
+		seq_printf(psSeqFile, "%x\n", i32StepValue);
+	}
+
+	return 0;
+}
+/* ------------------------------------------------------------------------- */
+const struct seq_operations gsLoadingBaseDvfsStepReadOps = {
+	.start = ged_loading_base_dvfs_step_seq_start,
+	.stop = ged_loading_base_dvfs_step_seq_stop,
+	.next = ged_loading_base_dvfs_step_seq_next,
+	.show = ged_loading_base_dvfs_step_seq_show,
+};
+#endif
+
+#ifdef GED_ENABLE_TIMER_BASED_DVFS_MARGIN
+/* ------------------------------------------------------------------------- */
+static ssize_t ged_timer_base_dvfs_margin_write_entry
+(const char __user *pszBuffer, size_t uiCount, loff_t uiPosition, void *pvData)
+{
+#define GED_HAL_DEBUGFS_SIZE 64
+	char acBuffer[GED_HAL_DEBUGFS_SIZE];
+
+	int i32Value;
+
+	if ((uiCount > 0) && (uiCount < GED_HAL_DEBUGFS_SIZE)) {
+		if (ged_copy_from_user(acBuffer, pszBuffer, uiCount) == 0) {
+			acBuffer[uiCount] = '\0';
+			if (kstrtoint(acBuffer, 0, &i32Value) == 0)
+				mtk_timer_base_dvfs_margin(i32Value);
+		}
+	}
+
+	return uiCount;
+}
+/*-------------------------------------------------------------------*/
+static void *ged_timer_base_dvfs_margin_seq_start(struct seq_file *psSeqFile,
+			loff_t *puiPosition)
+{
+	if (*puiPosition == 0)
+		return SEQ_START_TOKEN;
+
+	return NULL;
+}
+/*-------------------------------------------------------------------*/
+static void ged_timer_base_dvfs_margin_seq_stop(struct seq_file *psSeqFile,
+			void *pvData)
+{
+
+}
+/*-------------------------------------------------------------------*/
+static void *ged_timer_base_dvfs_margin_seq_next(struct seq_file *psSeqFile,
+			void *pvData, loff_t *puiPosition)
+{
+	return NULL;
+}
+/*-------------------------------------------------------------------*/
+static int ged_timer_base_dvfs_margin_seq_show(struct seq_file *psSeqFile,
+			void *pvData)
+{
+	if (pvData != NULL) {
+		int i32DvfsMarginValue;
+
+	if (false == mtk_get_timer_base_dvfs_margin(&i32DvfsMarginValue)) {
+		i32DvfsMarginValue = 0;
+		seq_puts(psSeqFile, "call mtk_get_timer_base_dvfs_margin false\n");
+	}
+	seq_printf(psSeqFile, "%d\n", i32DvfsMarginValue);
+	}
+
+	return 0;
+}
+/* --------------------------------------------------------------- */
+const struct seq_operations gsTimerBaseDvfsMarginReadOps = {
+	.start = ged_timer_base_dvfs_margin_seq_start,
+	.stop = ged_timer_base_dvfs_margin_seq_stop,
+	.next = ged_timer_base_dvfs_margin_seq_next,
+	.show = ged_timer_base_dvfs_margin_seq_show,
+};
+#endif
+
 static struct notifier_block ged_fb_notifier;
 
 static int ged_fb_notifier_callback(struct notifier_block *self, unsigned long event, void *data)
@@ -1214,6 +1421,55 @@ GED_ERROR ged_hal_init(void)
 	}
 #endif
 
+#if (defined(GED_ENABLE_FB_DVFS) && defined(GED_ENABLE_DYNAMIC_DVFS_MARGIN))
+		/* Control the gpu freq margin mode */
+				err = ged_debugFS_create_entry(
+				"dvfs_margin_value",
+				gpsHALDir,
+				&gsDvfsMarginValueReadOps,
+				ged_dvfs_margin_value_write_entry,
+				NULL,
+				&gpsDvfsMarginValueEntry);
+
+	if (unlikely(err != GED_OK)) {
+		GED_LOGE("ged: failed to create dvfs_margin_value entry!\n");
+		goto ERROR;
+	}
+#endif
+
+#ifdef GED_CONFIGURE_LOADING_BASE_DVFS_STEP
+	/* Control the gpu freq margin mode */
+	err = ged_debugFS_create_entry(
+			"loading_base_dvfs_step",
+			gpsHALDir,
+			&gsLoadingBaseDvfsStepReadOps,
+			ged_loading_base_dvfs_step_write_entry,
+			NULL,
+			&gpsLoadingBaseDvfsStepEntry);
+
+	if (unlikely(err != GED_OK)) {
+		GED_LOGE(
+			"ged: failed to create loading_base_dvfs_step entry!\n");
+		goto ERROR;
+	}
+#endif
+
+#ifdef GED_ENABLE_TIMER_BASED_DVFS_MARGIN
+	/* Control the timer base gpu freq margin */
+	err = ged_debugFS_create_entry(
+			"timer_base_dvfs_margin",
+			gpsHALDir,
+			&gsTimerBaseDvfsMarginReadOps,
+			ged_timer_base_dvfs_margin_write_entry,
+			NULL,
+			&gpsTimerBaseDvfsMarginEntry);
+
+	if (unlikely(err != GED_OK)) {
+		GED_LOGE("ged: failed to create tb dvfs_margin entry!\n");
+		goto ERROR;
+	}
+#endif
+
 	/* Report Integration Status */
 	err = ged_debugFS_create_entry(
 			"integration_report",
@@ -1258,5 +1514,15 @@ void ged_hal_exit(void)
 	ged_debugFS_remove_entry(gpsGedInfoKPIEntry);
 #endif
 	ged_debugFS_remove_entry_dir(gpsHALDir);
+#if (defined(GED_ENABLE_FB_DVFS) && defined(GED_ENABLE_DYNAMIC_DVFS_MARGIN))
+	ged_debugFS_remove_entry(gpsDvfsMarginValueEntry);
+#endif
+#ifdef GED_CONFIGURE_LOADING_BASE_DVFS_STEP
+	ged_debugFS_remove_entry(gpsLoadingBaseDvfsStepEntry);
+#endif
+#ifdef GED_ENABLE_TIMER_BASED_DVFS_MARGIN
+	ged_debugFS_remove_entry(gpsTimerBaseDvfsMarginEntry);
+#endif
+
 }
 //-----------------------------------------------------------------------------

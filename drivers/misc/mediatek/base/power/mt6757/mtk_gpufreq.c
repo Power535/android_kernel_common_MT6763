@@ -840,6 +840,7 @@ static void mt_gpufreq_set_initial(void)
 	unsigned int cur_volt = 0, cur_freq = 0;
 	int i = 0;
 
+	mutex_lock(&mt_gpufreq_lock);
 
 #ifdef MT_GPUFREQ_AEE_RR_REC
 	aee_rr_rec_gpu_dvfs_status(aee_rr_curr_gpu_dvfs_status() | (1 << GPU_DVFS_IS_DOING_DVFS));
@@ -847,8 +848,6 @@ static void mt_gpufreq_set_initial(void)
 
 	cur_volt = _mt_gpufreq_get_cur_volt();
 	cur_freq = _mt_gpufreq_get_cur_freq();
-
-	mutex_lock(&mt_gpufreq_lock);
 
 	for (i = 0; i < mt_gpufreqs_num; i++) {
 		if (cur_volt >= mt_gpufreqs[i].gpufreq_volt) {

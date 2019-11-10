@@ -65,6 +65,10 @@ int ged_bridge_event_notify(
 		GED_BRIDGE_IN_EVENT_NOTIFY *psEVENT_NOTIFYINT, 
 		GED_BRIDGE_OUT_EVENT_NOTIFY *psEVENT_NOTIFYOUT);
 
+int ged_bridge_hint_force_mdp(
+	struct GED_BRIDGE_IN_HINT_FORCE_MDP *psHintForceMdpIn,
+	struct GED_BRIDGE_OUT_HINT_FORCE_MDP *psHintForceMdpOut);
+
 int ged_bridge_gpu_timestamp(
 	GED_BRIDGE_IN_GPU_TIMESTAMP * psGpuBeginINT,
 	GED_BRIDGE_OUT_GPU_TIMESTAMP *psGpuBeginOUT);

@@ -248,6 +248,18 @@ static struct ipv6_devconf ipv6_devconf __read_mostly = {
 	.ignore_routes_with_linkdown = 0,
 };
 
+/* this is save current operator value */
+int sysctl_optr __read_mostly;
+
+/* this operator is vzw ? */
+int ip6_operator_isop12(void)
+{
+#ifdef CONFIG_MTK_IPV6_VZW
+	return 1;
+#endif
+	return (sysctl_optr == 12);
+}
+
 static struct ipv6_devconf ipv6_devconf_dflt __read_mostly = {
 	.forwarding		= 0,
 	.hop_limit		= IPV6_DEFAULT_HOPLIMIT,
@@ -1077,7 +1089,8 @@ check_cleanup_prefix_route(struct inet6_ifaddr *ifp, unsigned long *expires)
 	list_for_each_entry(ifa, &idev->addr_list, if_list) {
 		if (ifa == ifp)
 			continue;
-		if (!ipv6_prefix_equal(&ifa->addr, &ifp->addr,
+		if (ifa->prefix_len != ifp->prefix_len ||
+		    !ipv6_prefix_equal(&ifa->addr, &ifp->addr,
 				       ifp->prefix_len))
 			continue;
 		if (ifa->flags & (IFA_F_PERMANENT | IFA_F_NOPREFIXROUTE))
@@ -3150,7 +3163,8 @@ static void addrconf_dev_config(struct net_device *dev)
 	    (dev->type != ARPHRD_IEEE802154) &&
 	    (dev->type != ARPHRD_IEEE1394) &&
 	    (dev->type != ARPHRD_TUNNEL6) &&
-	    (dev->type != ARPHRD_6LOWPAN)) {
+	    (dev->type != ARPHRD_6LOWPAN) &&
+	    (dev->type != ARPHRD_PUREIP)) {
 		/* Alas, we support only Ethernet autoconfiguration. */
 		return;
 	}
@@ -3551,12 +3565,13 @@ static void addrconf_rs_timer(unsigned long data)
 			goto put;
 
 		write_lock(&idev->lock);
-#ifdef CONFIG_MTK_IPV6_VZW
-		idev->rs_interval = idev->cnf.rtr_solicit_interval;
-#else
-		idev->rs_interval = rfc3315_s14_backoff_update(
-			idev->rs_interval, idev->cnf.rtr_solicit_max_interval);
-#endif
+		if (ip6_operator_isop12() &&
+		    (strncmp(dev->name, "ccmni", 2) == 0))
+			idev->rs_interval = idev->cnf.rtr_solicit_interval;
+		else
+			idev->rs_interval = rfc3315_s14_backoff_update(
+				idev->rs_interval, idev->cnf.rtr_solicit_max_interval);
+
 		/* The wait after the last probe can be shorter */
 		addrconf_mod_rs_timer(idev, (idev->rs_probes ==
 					     idev->cnf.rtr_solicits) ?
@@ -3817,12 +3832,16 @@ static void addrconf_dad_completed(struct inet6_ifaddr *ifp)
 
 		write_lock_bh(&ifp->idev->lock);
 		spin_lock(&ifp->lock);
-#ifdef CONFIG_MTK_IPV6_VZW
-		ifp->idev->rs_interval = ifp->idev->cnf.rtr_solicit_interval;
-#else
-		ifp->idev->rs_interval = rfc3315_s14_backoff_init(
-			ifp->idev->cnf.rtr_solicit_interval);
-#endif
+
+		if (ip6_operator_isop12() &&
+		    (strncmp(dev->name, "ccmni", 2) == 0)) {
+			ifp->idev->rs_interval =
+				ifp->idev->cnf.rtr_solicit_interval;
+		} else {
+			ifp->idev->rs_interval = rfc3315_s14_backoff_init(
+				ifp->idev->cnf.rtr_solicit_interval);
+		}
+
 		ifp->idev->rs_probes = 1;
 		ifp->idev->if_flags |= IF_RS_SENT;
 		addrconf_mod_rs_timer(ifp->idev, ifp->idev->rs_interval);
@@ -3914,7 +3933,6 @@ static struct inet6_ifaddr *if6_get_first(struct seq_file *seq, loff_t pos)
 				p++;
 				continue;
 			}
-			state->offset++;
 			return ifa;
 		}
 
@@ -3938,13 +3956,12 @@ static struct inet6_ifaddr *if6_get_next(struct seq_file *seq,
 		return ifa;
 	}
 
+	state->offset = 0;
 	while (++state->bucket < IN6_ADDR_HSIZE) {
-		state->offset = 0;
 		hlist_for_each_entry_rcu_bh(ifa,
 				     &inet6_addr_lst[state->bucket], addr_lst) {
 			if (!net_eq(dev_net(ifa->idev->dev), net))
 				continue;
-			state->offset++;
 			return ifa;
 		}
 	}
@@ -4621,8 +4638,8 @@ static int in6_dump_addrs(struct inet6_dev *idev, struct sk_buff *skb,
 
 		/* unicast address incl. temp addr */
 		list_for_each_entry(ifa, &idev->addr_list, if_list) {
-			if (++ip_idx < s_ip_idx)
-				continue;
+			if (ip_idx < s_ip_idx)
+				goto next;
 			err = inet6_fill_ifaddr(skb, ifa,
 						NETLINK_CB(cb->skb).portid,
 						cb->nlh->nlmsg_seq,
@@ -4631,6 +4648,8 @@ static int in6_dump_addrs(struct inet6_dev *idev, struct sk_buff *skb,
 			if (err < 0)
 				break;
 			nl_dump_check_consistent(cb, nlmsg_hdr(skb));
+next:
+			ip_idx++;
 		}
 		break;
 	}
@@ -5069,12 +5088,14 @@ static int inet6_set_iftoken(struct inet6_dev *idev, struct in6_addr *token)
 
 	if (update_rs) {
 		idev->if_flags |= IF_RS_SENT;
-#ifdef CONFIG_MTK_IPV6_VZW
-		idev->rs_interval = idev->cnf.rtr_solicit_interval;
-#else
-		idev->rs_interval = rfc3315_s14_backoff_init(
-			idev->cnf.rtr_solicit_interval);
-#endif
+
+		if (ip6_operator_isop12() &&
+		    (strncmp(dev->name, "ccmni", 2) == 0))
+			idev->rs_interval = idev->cnf.rtr_solicit_interval;
+		else
+			idev->rs_interval = rfc3315_s14_backoff_init(
+				idev->cnf.rtr_solicit_interval);
+
 		idev->rs_probes = 1;
 		addrconf_mod_rs_timer(idev, idev->rs_interval);
 	}

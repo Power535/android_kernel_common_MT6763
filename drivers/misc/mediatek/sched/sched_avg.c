@@ -23,7 +23,6 @@
 #include "rq_stats.h"
 
 #include <mt-plat/met_drv.h>
-#include <mt-plat/fpsgo_v2_common.h>
 
 enum overutil_type_t {
 	NO_OVERUTIL = 0,

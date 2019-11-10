@@ -174,6 +174,7 @@ void ext4_free_crypt_info(struct ext4_crypt_info *ci)
 	if (!ci)
 		return;
 
+	key_put(ci->ci_keyring_key);
 	crypto_free_ablkcipher(ci->ci_ctfm);
 	kmem_cache_free(ext4_crypt_info_cachep, ci);
 }
@@ -270,6 +271,7 @@ int ext4_get_encryption_info(struct inode *inode)
 	crypt_info->ci_data_mode = ctx.contents_encryption_mode;
 	crypt_info->ci_filename_mode = ctx.filenames_encryption_mode;
 	crypt_info->ci_ctfm = NULL;
+	crypt_info->ci_keyring_key = NULL;
 	memcpy(crypt_info->ci_master_key, ctx.master_key_descriptor,
 	       sizeof(crypt_info->ci_master_key));
 	if (S_ISDIR(inode->i_mode) || S_ISLNK(inode->i_mode))
@@ -287,12 +289,6 @@ int ext4_get_encryption_info(struct inode *inode)
 		break;
 	case EXT4_ENCRYPTION_MODE_AES_256_HEH:
 		cipher_str = "heh(aes)";
-		break;
-	case EXT4_ENCRYPTION_MODE_SPECK128_256_XTS:
-		cipher_str = "xts(speck128)";
-		break;
-	case EXT4_ENCRYPTION_MODE_SPECK128_256_CTS:
-		cipher_str = "cts(cbc(speck128))";
 		break;
 	case EXT4_ENCRYPTION_MODE_PRIVATE:
 		cipher_str = "bugon";
@@ -326,7 +322,7 @@ int ext4_get_encryption_info(struct inode *inode)
 		keyring_key = NULL;
 		goto out;
 	}
-	crypt_info->ci_keyring_key = keyring_key;
+	crypt_info->ci_keyring_key = key_get(keyring_key);
 	if (keyring_key->type != &key_type_logon) {
 		printk_once(KERN_WARNING
 			    "ext4: key type must be logon\n");

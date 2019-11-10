@@ -14,4 +14,5 @@ ifeq ($(CONFIG_MICROTRUST_TEE_SUPPORT), y)
 VERSION := $(subst ",,$(CONFIG_MICROTRUST_TEE_VERSION))
 ccflags-y += -I$(srctree)/drivers/misc/mediatek/teei/$(VERSION)/common/include
 ccflags-y += -I$(srctree)/drivers/misc/mediatek/teei/$(VERSION)/public/
+ccflags-y += -I$(srctree)/drivers/misc/mediatek/teei/$(VERSION)/tz_driver/include
 endif
